@@ -1,0 +1,5 @@
+requests
+websockets
+cryptography
+python-dotenv
+polymarket_us
