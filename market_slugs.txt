@@ -1,0 +1,15 @@
+# ============================================================
+# Janus Engine — Market Configuration
+# ============================================================
+# Edit the values below to change which markets the bot trades.
+# No need to touch any Python code.
+#
+# Lines starting with '#' are comments and are ignored.
+# ============================================================
+# THESE TWO MUST BE SAME OTHERWISE ENGINE WILL FAIL
+
+# Kalshi market ticker
+MARKET_TICKER = KXHIGHNY-26JUL18-B79.5
+
+# Polymarket US market slug
+MARKET_SLUG = tc-temp-nychigh-2026-07-18-gte79lt80f

@@ -12,6 +12,7 @@ from execution import (
     get_polymarket_commission,
     get_allocation_and_cost,
 )
+import bot_logger
 
 # Dynamic module importing helper (handles files with hyphens in the name)
 def load_module(filename):
@@ -181,6 +182,13 @@ def check_arbitrage():
         if opp:
             # Trigger execution report if new, or size/profit changed meaningfully
             if not last_opp or last_opp["size"] != opp["size"] or abs(last_opp["profit"] - opp["profit"]) > 0.01:
+                bot_logger.log("OPPORTUNITY_DETECTED", (
+                    f"Direction:  {direction}\n"
+                    f"Contracts:  {opp['size']}\n"
+                    f"Profit:     ${opp['profit']:.4f}\n"
+                    f"Total Cost: ${opp['total_cost']:.4f}\n"
+                    f"Dispatching to execution engine..."
+                ))
                 threading.Thread(
                     target=execute_arbitrage,
                     args=(opp,),
@@ -191,6 +199,7 @@ def check_arbitrage():
             # If opportunity closed, log the event and clear it from active
             if last_opp:
                 print(f"ℹ️  [Arbitrage Closed] {direction}")
+                bot_logger.log("OPPORTUNITY_CLOSED", f"Direction: {direction}")
                 active_opportunities.pop(direction, None)
 
 # Update callbacks
@@ -215,6 +224,7 @@ async def _run_feed(name, coro_fn, on_crash_clear, *args, **kwargs):
             await coro_fn(*args, **kwargs)
             # Should never reach here (modules loop forever), but handle it
             print(f"⚠️  [{name}] feed exited cleanly — restarting in 5s...")
+            bot_logger.log("FEED_EXITED", f"{name} feed exited cleanly. Restarting in 5s...")
             on_crash_clear()
             await asyncio.sleep(5)
         except asyncio.CancelledError:
@@ -222,6 +232,7 @@ async def _run_feed(name, coro_fn, on_crash_clear, *args, **kwargs):
         except Exception as e:
             print(f"❌ [{name}] feed crashed: {e}")
             print(f"   └─ Restarting in 5s...")
+            bot_logger.log("FEED_CRASHED", f"{name} feed crashed: {e}\nRestarting in 5s...")
             on_crash_clear()
             await asyncio.sleep(5)
 
@@ -231,6 +242,13 @@ async def main():
     print(f"   └─ Kalshi Market Ticker:  {kalshi_ticker}")
     print(f"   └─ Polymarket US Slug:     {pm_slug}")
     print("=" * 60)
+
+    bot_logger.log_section("ENGINE STARTED")
+    bot_logger.log("CONFIG", (
+        f"Kalshi Market Ticker:  {kalshi_ticker}\n"
+        f"Polymarket US Slug:    {pm_slug}\n"
+        f"Log file:              {bot_logger.LOG_FILE_PATH}"
+    ))
     
     def clear_kalshi():
         global latest_kalshi_book

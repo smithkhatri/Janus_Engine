@@ -23,13 +23,22 @@ PM_ORDERBOOK = {"yes_bid": {}, "yes_ask": {}, "no_bid": {}, "no_ask": {}}
 
 
 
+def _load_market_config(key):
+    """Read a KEY = VALUE from market_slugs.txt (next to this script)."""
+    import pathlib
+    cfg_path = pathlib.Path(__file__).resolve().parent / "market_slugs.txt"
+    with open(cfg_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                k, v = line.split("=", 1)
+                if k.strip() == key:
+                    return v.strip()
+    raise RuntimeError(f"{key} not found in {cfg_path}")
 
-
-
-
-MARKET_SLUG = "tc-temp-miahigh-2026-07-16-gte92lt93f"  # Replace with any open Polymarket US market slug
-
-
+MARKET_SLUG = _load_market_config("MARKET_SLUG")
 
 
 

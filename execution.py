@@ -22,6 +22,8 @@ from cryptography.hazmat.primitives.asymmetric import padding, ed25519
 from cryptography.hazmat.backends import default_backend
 # pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
+
+import bot_logger
 # pyrefly: ignore [missing-import]
 from polymarket_us import PolymarketUS
 
@@ -262,13 +264,16 @@ def execute_arbitrage(opportunity: dict):
     Prevents concurrent and rapid re-execution of trades.
     """
     if not _execution_lock.acquire(blocking=False):
+        bot_logger.log("EXECUTION_SKIPPED", "Another execution is already in progress — skipping.")
         return  # Another execution is already in progress
     try:
         elapsed = time.monotonic() - _last_execution_ts
         if elapsed < EXECUTION_COOLDOWN_SEC:
+            remaining = EXECUTION_COOLDOWN_SEC - elapsed
             print(f"{_Y}⏳ Cooldown active "
-                  f"({EXECUTION_COOLDOWN_SEC - elapsed:.1f}s remaining) "
+                  f"({remaining:.1f}s remaining) "
                   f"— skipping signal{_0}")
+            bot_logger.log("COOLDOWN_SKIP", f"Cooldown active — {remaining:.1f}s remaining. Signal ignored.")
             return
         _do_execute(opportunity)
     finally:
@@ -303,6 +308,25 @@ def _do_execute(opportunity: dict):
     print(f"{_B}Revenue:{_0}     ${float(size):.2f}  (Guaranteed Payout)")
     print(f"{_B}Net Profit:{_0}  {_G}${profit:.2f}{_0}  "
           f"({_B}ROI: {roi:.2f}%{_0})")
+
+    # Log full trade summary
+    bot_logger.log_trade_summary(
+        direction=direction,
+        contracts=size,
+        total_cost=total_cost,
+        base_cost=base_cost,
+        commission=commission,
+        profit=profit,
+        roi=roi,
+        exchange_a=opportunity["exchange_a"],
+        ticker_a=opportunity["ticker_a"],
+        side_a=opportunity.get("side_a", "N/A"),
+        alloc_a=opportunity["alloc_a"],
+        exchange_b=opportunity["exchange_b"],
+        ticker_b=opportunity["ticker_b"],
+        side_b=opportunity.get("side_b", "N/A"),
+        alloc_b=opportunity["alloc_b"],
+    )
     print(f"{'-' * 60}")
 
     # Proposed execution steps
@@ -328,6 +352,7 @@ def _do_execute(opportunity: dict):
     except Exception as e:
         print(f"\n{_R}❌ Balance fetch failed: {e} — skipping trade{_0}")
         print(f"{'=' * 60}\n")
+        bot_logger.log("BALANCE_FETCH_FAILED", f"Error: {e}\nTrade skipped.")
         return
 
     cost_a = float(opportunity["cost_a"])      # kalshi leg
@@ -343,6 +368,12 @@ def _do_execute(opportunity: dict):
     print(f"  Polymarket balance:  ${pm_bal:>10.2f}   |   "
           f"Leg cost: ${cost_b:.2f}")
 
+    bot_logger.log("CAPITAL_CHECK", (
+        f"Kalshi balance:     ${kalshi_bal:.4f}   |  Leg A cost: ${cost_a:.4f}\n"
+        f"Polymarket balance: ${pm_bal:.4f}   |  Leg B cost: ${cost_b:.4f}\n"
+        f"Requested contracts: {size}"
+    ))
+
     if cost_a > kalshi_bal:
         budget_a = float(Decimal(str(kalshi_bal)) * CAPITAL_LIMIT_PCT)
         affordable_n = _max_affordable_n(
@@ -351,6 +382,9 @@ def _do_execute(opportunity: dict):
         print(f"  {_Y}⚠ Kalshi underfunded — capped to "
               f"{affordable_n} contracts "
               f"(95% of ${kalshi_bal:.2f}){_0}")
+        bot_logger.log("CAPITAL_INSUFFICIENT",
+            f"Kalshi underfunded. Balance: ${kalshi_bal:.4f}, Need: ${cost_a:.4f}\n"
+            f"Capped to {affordable_n} contracts (95% of balance = ${budget_a:.4f})")
 
     if cost_b > pm_bal:
         budget_b = float(Decimal(str(pm_bal)) * CAPITAL_LIMIT_PCT)
@@ -361,10 +395,14 @@ def _do_execute(opportunity: dict):
         print(f"  {_Y}⚠ PM underfunded — capped to "
               f"{affordable_n} contracts "
               f"(95% of ${pm_bal:.2f}){_0}")
+        bot_logger.log("CAPITAL_INSUFFICIENT",
+            f"Polymarket underfunded. Balance: ${pm_bal:.4f}, Need: ${cost_b:.4f}\n"
+            f"Capped to {affordable_n} contracts (95% of balance = ${budget_b:.4f})")
 
     if affordable_n < 1:
         print(f"  {_R}✗ Insufficient capital — skipping trade{_0}")
         print(f"{'=' * 60}\n")
+        bot_logger.log("TRADE_ABORTED", "Insufficient capital on one or both exchanges. 0 contracts affordable.")
         return
 
     # Recalculate allocations at the (possibly reduced) size
@@ -377,12 +415,17 @@ def _do_execute(opportunity: dict):
     if final_alloc_a is None or final_alloc_b is None:
         print(f"  {_R}✗ Depth exhausted at adjusted size — skipping{_0}")
         print(f"{'=' * 60}\n")
+        bot_logger.log("TRADE_ABORTED", f"Orderbook depth exhausted at adjusted size ({affordable_n} contracts).")
         return
 
     final_profit = Decimal(str(affordable_n)) - final_cost_a - final_cost_b
     if final_profit <= 0:
         print(f"  {_Y}✗ No profit at affordable size — skipping{_0}")
         print(f"{'=' * 60}\n")
+        bot_logger.log("TRADE_ABORTED",
+            f"No profit at affordable size ({affordable_n} contracts).\n"
+            f"Adjusted cost: ${float(final_cost_a + final_cost_b):.4f}  |  "
+            f"Revenue: ${affordable_n:.2f}  |  Profit: ${float(final_profit):.4f}")
         return
 
     if affordable_n < size:
@@ -393,6 +436,9 @@ def _do_execute(opportunity: dict):
         print(f"\n  {_B}Adjusted trade:{_0} {affordable_n} contracts  |  "
               f"Profit: {_G}${float(final_profit):.2f}{_0}  |  "
               f"ROI: {adj_roi:.2f}%")
+        bot_logger.log("TRADE_SIZE_ADJUSTED",
+            f"Original size: {size} → Adjusted: {affordable_n} contracts\n"
+            f"Adjusted profit: ${float(final_profit):.4f}  |  ROI: {adj_roi:.2f}%")
 
     # ── 3. Place orders ─────────────────────────────────────────
     side_a   = opportunity["side_a"]       # "yes" or "no"
@@ -413,6 +459,7 @@ def _do_execute(opportunity: dict):
         pm_price_str = f"{worst_b:.2f}"
 
     print(f"\n{_B}PLACING ORDERS …{_0}")
+    bot_logger.log_section("PLACING ORDERS")
 
     # --- Kalshi leg ---
     try:
@@ -424,11 +471,32 @@ def _do_execute(opportunity: dict):
             print(f"  {_G}✓ Kalshi filled{_0}   |  "
                   f"ID: {k_data.get('order_id', 'N/A')}  |  "
                   f"Remaining: {k_data.get('remaining_count', 'N/A')}")
+            bot_logger.log_order_result(
+                exchange="kalshi", ticker=ticker_a, side=side_a,
+                price=f"{kalshi_price_cents}¢", count=affordable_n,
+                success=True,
+                response_data=(
+                    f"Order ID: {k_data.get('order_id', 'N/A')}  |  "
+                    f"Remaining: {k_data.get('remaining_count', 'N/A')}  |  "
+                    f"Full response: {k_data}"
+                ),
+            )
         else:
             print(f"  {_R}✗ Kalshi error "
                   f"{k_resp.status_code}: {k_resp.text}{_0}")
+            bot_logger.log_order_result(
+                exchange="kalshi", ticker=ticker_a, side=side_a,
+                price=f"{kalshi_price_cents}¢", count=affordable_n,
+                success=False,
+                response_data=f"HTTP {k_resp.status_code}: {k_resp.text}",
+            )
     except Exception as e:
         print(f"  {_R}✗ Kalshi exception: {e}{_0}")
+        bot_logger.log_order_result(
+            exchange="kalshi", ticker=ticker_a, side=side_a,
+            price=f"{kalshi_price_cents}¢", count=affordable_n,
+            success=False, response_data=f"Exception: {e}",
+        )
 
     # --- Polymarket leg ---
     try:
@@ -436,8 +504,24 @@ def _do_execute(opportunity: dict):
             ticker_b, side_b, pm_price_str, affordable_n
         )
         print(f"  {_G}✓ PM order placed{_0}  |  Response: {pm_resp}")
+        bot_logger.log_order_result(
+            exchange="polymarket", ticker=ticker_b, side=side_b,
+            price=pm_price_str, count=affordable_n,
+            success=True, response_data=str(pm_resp),
+        )
     except Exception as e:
         print(f"  {_R}✗ PM exception: {e}{_0}")
+        bot_logger.log_order_result(
+            exchange="polymarket", ticker=ticker_b, side=side_b,
+            price=pm_price_str, count=affordable_n,
+            success=False, response_data=f"Exception: {e}",
+        )
 
     _last_execution_ts = time.monotonic()
+    bot_logger.log("TRADE_CYCLE_COMPLETE",
+        f"Direction: {direction}\n"
+        f"Final contracts: {affordable_n}\n"
+        f"Final profit: ${float(final_profit):.4f}\n"
+        f"Kalshi leg:     {ticker_a} {side_a} @ {kalshi_price_cents}¢ × {affordable_n}\n"
+        f"PM leg:         {ticker_b} {side_b} @ {pm_price_str} × {affordable_n}")
     print(f"{'=' * 60}\n")
