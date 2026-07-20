@@ -9,7 +9,7 @@
 # THESE TWO MUST BE SAME OTHERWISE ENGINE WILL FAIL
 
 # Kalshi market ticker
-MARKET_TICKER = KXHIGHNY-26JUL18-B79.5
+MARKET_TICKER = KXHIGHMIA-26JUL20-B91.5
 
 # Polymarket US market slug
-MARKET_SLUG = tc-temp-nychigh-2026-07-18-gte79lt80f
+MARKET_SLUG = tc-temp-miahigh-2026-07-20-gte91lt92f
