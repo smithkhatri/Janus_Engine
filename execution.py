@@ -255,6 +255,135 @@ _0 = "\033[0m"       # reset
 
 
 # ═══════════════════════════════════════════════════════════════════
+# PM FILL VERIFICATION
+# ═══════════════════════════════════════════════════════════════════
+
+def _verify_pm_fill(order_id, expected_count, max_retries=3, delay=0.3):
+    """
+    Query the PM order status to determine actual fill count.
+    IOC orders are processed near-instantly, but there may be a slight
+    delay before the fill is reflected in the order status.
+
+    Returns the number of contracts actually filled (int).
+    """
+    for attempt in range(max_retries):
+        try:
+            order = _pm_client.orders.retrieve(order_id)
+            bot_logger.log("PM_FILL_QUERY", f"Attempt {attempt+1}: {order}")
+
+            # Try known field names for fill quantity
+            for field in ("filledQuantity", "filled_quantity", "size_matched",
+                          "fillCount", "quantityFilled"):
+                val = order.get(field)
+                if val is not None:
+                    return int(float(val))
+
+            # Fallback: infer from order state
+            state = str(order.get("state", order.get("status", ""))).upper()
+            if state in ("FILLED", "COMPLETELY_FILLED"):
+                return expected_count
+            if state in ("CANCELED", "CANCELLED", "UNMATCHED", "EXPIRED"):
+                return 0
+            if "PARTIAL" in state:
+                # Can't determine exact count from state alone —
+                # log and return expected (conservative for parity)
+                bot_logger.log("PM_FILL_AMBIGUOUS",
+                    f"State={state} but no fill count field. "
+                    f"Assuming {expected_count} filled.")
+                return expected_count
+
+            # State unclear — wait and retry
+            if attempt < max_retries - 1:
+                time.sleep(delay)
+        except Exception as e:
+            bot_logger.log("PM_FILL_VERIFY_ERROR",
+                f"Attempt {attempt+1}/{max_retries}: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(delay)
+
+    # Exhausted retries — conservatively assume full fill so we don't
+    # erroneously sell-back Kalshi contracts that ARE properly matched.
+    bot_logger.log("PM_FILL_VERIFY_FALLBACK",
+        f"Could not determine PM fill count after {max_retries} attempts. "
+        f"Assuming {expected_count} filled (conservative).")
+    return expected_count
+
+
+# ═══════════════════════════════════════════════════════════════════
+# KALSHI SELL-BACK (parity safety net)
+# ═══════════════════════════════════════════════════════════════════
+
+def _place_kalshi_sell_back(ticker, original_side, count, bids_a):
+    """
+    Sell back excess Kalshi contracts at the current best bid to restore
+    position parity when the PM leg underfills.
+
+    Parameters
+    ----------
+    ticker       : Kalshi market ticker
+    original_side: the side we originally BOUGHT ("yes" or "no")
+    count        : number of excess contracts to sell back
+    bids_a       : list of (price, qty) tuples, sorted descending (best first)
+    """
+    if not bids_a:
+        msg = "No bid-side liquidity available for sell-back"
+        print(f"  {_R}✗ {msg}{_0}")
+        bot_logger.log("SELL_BACK_NO_BIDS", msg)
+        return None
+
+    best_bid_price = bids_a[0][0]
+
+    # To sell back, we take the opposite action:
+    #   Sell NO → Buy YES (place a YES bid at complement price)
+    #   Sell YES → Sell YES (place a YES ask at the bid price)
+    if original_side == "no":
+        api_side = "bid"
+        api_price_cents = int(round((1.0 - best_bid_price) * 100))
+    else:  # "yes"
+        api_side = "ask"
+        api_price_cents = int(round(best_bid_price * 100))
+
+    price_dollars_str = f"{api_price_cents / 100:.4f}"
+
+    data = {
+        "ticker": ticker,
+        "side": api_side,
+        "count": str(count),
+        "price": price_dollars_str,
+        "time_in_force": "immediate_or_cancel",
+        "self_trade_prevention_type": "taker_at_cross",
+        "client_order_id": str(uuid.uuid4()),
+    }
+
+    bot_logger.log("SELL_BACK_PLACING",
+        f"Ticker: {ticker}  |  Original side: {original_side}\n"
+        f"Selling {count} contracts at best bid {best_bid_price:.4f}\n"
+        f"API: side={api_side}  price={price_dollars_str}")
+
+    resp = _kalshi_request("POST", "/portfolio/events/orders", data)
+
+    if resp.status_code == 201:
+        sb_data = resp.json()
+        sb_filled = int(float(sb_data.get("fill_count", "0")))
+        print(f"  {_Y}↩ Sell-back: {sb_filled}/{count} contracts closed{_0}")
+        bot_logger.log_order_result(
+            exchange="kalshi_sell_back", ticker=ticker,
+            side=f"SELL {original_side.upper()}", price=price_dollars_str,
+            count=count, success=True,
+            response_data=f"Filled: {sb_filled}/{count}  |  Full: {sb_data}",
+        )
+    else:
+        print(f"  {_R}✗ Sell-back error {resp.status_code}: {resp.text}{_0}")
+        bot_logger.log_order_result(
+            exchange="kalshi_sell_back", ticker=ticker,
+            side=f"SELL {original_side.upper()}", price=price_dollars_str,
+            count=count, success=False,
+            response_data=f"HTTP {resp.status_code}: {resp.text}",
+        )
+    return resp
+
+
+# ═══════════════════════════════════════════════════════════════════
 # MAIN ENTRY POINT — called by brain.py on every opportunity
 # ═══════════════════════════════════════════════════════════════════
 
@@ -440,44 +569,45 @@ def _do_execute(opportunity: dict):
             f"Original size: {size} → Adjusted: {affordable_n} contracts\n"
             f"Adjusted profit: ${float(final_profit):.4f}  |  ROI: {adj_roi:.2f}%")
 
-    # ── 3. Place orders ─────────────────────────────────────────
+    # ── 3. Place orders (fill-gated sequential execution) ────────
+    #
+    # Flow:  Kalshi first → check fills → PM sized to fills → verify PM → sell-back if needed
+    #
     side_a   = opportunity["side_a"]       # "yes" or "no"
     side_b   = opportunity["side_b"]       # PM intent string
     ticker_a = opportunity["ticker_a"]
     ticker_b = opportunity["ticker_b"]
+    bids_a   = opportunity.get("bids_a", [])  # for sell-back pricing
 
     # Kalshi: sweep the book up to worst (highest) ask → price in cents
     worst_a = max(lvl["price"] for lvl in final_alloc_a)
     kalshi_price_cents = int(round(worst_a * 100))
 
-    # PM API always uses YES-denominated price,
-    # so complement the NO-ask price for SHORT orders
-    worst_b = max(lvl["price"] for lvl in final_alloc_b)
-    if side_b == "ORDER_INTENT_BUY_SHORT":
-        pm_price_str = f"{1.0 - worst_b:.2f}"
-    else:
-        pm_price_str = f"{worst_b:.2f}"
-
-    print(f"\n{_B}PLACING ORDERS …{_0}")
+    print(f"\n{_B}PLACING ORDERS (fill-gated) …{_0}")
     bot_logger.log_section("PLACING ORDERS")
 
-    # --- Kalshi leg ---
+    # ── 3a. KALSHI LEG (placed first — less liquid exchange) ───
+    kalshi_filled = 0
+
     try:
         k_resp = _place_kalshi_order(
             ticker_a, side_a, kalshi_price_cents, affordable_n
         )
         if k_resp.status_code == 201:
             k_data = k_resp.json()
-            print(f"  {_G}✓ Kalshi filled{_0}   |  "
-                  f"ID: {k_data.get('order_id', 'N/A')}  |  "
-                  f"Remaining: {k_data.get('remaining_count', 'N/A')}")
+            kalshi_filled = int(float(k_data.get("fill_count", "0")))
+
+            print(f"  {'✓' if kalshi_filled > 0 else '⊘'} Kalshi  "
+                  f"|  Requested: {affordable_n}  "
+                  f"|  Filled: {kalshi_filled}  "
+                  f"|  ID: {k_data.get('order_id', 'N/A')}")
             bot_logger.log_order_result(
                 exchange="kalshi", ticker=ticker_a, side=side_a,
                 price=f"{kalshi_price_cents}¢", count=affordable_n,
-                success=True,
+                success=kalshi_filled > 0,
                 response_data=(
-                    f"Order ID: {k_data.get('order_id', 'N/A')}  |  "
-                    f"Remaining: {k_data.get('remaining_count', 'N/A')}  |  "
+                    f"Requested: {affordable_n}  |  "
+                    f"Filled: {kalshi_filled}  |  "
                     f"Full response: {k_data}"
                 ),
             )
@@ -498,30 +628,104 @@ def _do_execute(opportunity: dict):
             success=False, response_data=f"Exception: {e}",
         )
 
-    # --- Polymarket leg ---
+    # Gate: if Kalshi filled nothing, skip PM entirely — no mismatch possible
+    if kalshi_filled == 0:
+        print(f"  {_Y}⊘ Kalshi filled 0 contracts — skipping PM leg{_0}")
+        bot_logger.log("KALSHI_ZERO_FILL",
+            f"Kalshi IOC got 0 fills for {affordable_n} requested contracts.\n"
+            f"PM leg NOT placed — no mismatch.")
+        _last_execution_ts = time.monotonic()
+        print(f"{'=' * 60}\n")
+        return
+
+    # ── 3b. POLYMARKET LEG (sized to actual Kalshi fills) ──────
+    pm_target = kalshi_filled  # match PM to Kalshi's actual fill count
+
+    # Recalculate PM allocation for the actual fill count
+    pm_alloc, pm_cost = get_allocation_and_cost(
+        asks_b, pm_target, get_polymarket_commission
+    )
+    if pm_alloc is None:
+        print(f"  {_R}✗ PM depth exhausted for {pm_target} contracts — "
+              f"selling back Kalshi{_0}")
+        bot_logger.log("PM_DEPTH_EXHAUSTED",
+            f"Cannot fill {pm_target} contracts on PM orderbook.\n"
+            f"Initiating Kalshi sell-back for {kalshi_filled} contracts.")
+        _place_kalshi_sell_back(ticker_a, side_a, kalshi_filled, bids_a)
+        _last_execution_ts = time.monotonic()
+        print(f"{'=' * 60}\n")
+        return
+
+    worst_b = max(lvl["price"] for lvl in pm_alloc)
+    if side_b == "ORDER_INTENT_BUY_SHORT":
+        pm_price_str = f"{1.0 - worst_b:.2f}"
+    else:
+        pm_price_str = f"{worst_b:.2f}"
+
+    pm_order_id = None
+    pm_placed = False
+
     try:
         pm_resp = _place_pm_order(
-            ticker_b, side_b, pm_price_str, affordable_n
+            ticker_b, side_b, pm_price_str, pm_target
         )
-        print(f"  {_G}✓ PM order placed{_0}  |  Response: {pm_resp}")
+        pm_placed = True
+        pm_order_id = pm_resp.get("id") if isinstance(pm_resp, dict) else None
+        print(f"  {_G}✓ PM order sent{_0}    "
+              f"|  Contracts: {pm_target}  "
+              f"|  ID: {pm_order_id or 'N/A'}")
         bot_logger.log_order_result(
             exchange="polymarket", ticker=ticker_b, side=side_b,
-            price=pm_price_str, count=affordable_n,
+            price=pm_price_str, count=pm_target,
             success=True, response_data=str(pm_resp),
         )
     except Exception as e:
         print(f"  {_R}✗ PM exception: {e}{_0}")
         bot_logger.log_order_result(
             exchange="polymarket", ticker=ticker_b, side=side_b,
-            price=pm_price_str, count=affordable_n,
+            price=pm_price_str, count=pm_target,
             success=False, response_data=f"Exception: {e}",
         )
 
+    # ── 3c. VERIFY PM FILLS & SELL-BACK IF NEEDED ──────────────
+    pm_filled = 0
+
+    if pm_placed and pm_order_id:
+        # Brief pause for PM to settle the IOC fill
+        time.sleep(0.3)
+        pm_filled = _verify_pm_fill(pm_order_id, pm_target)
+        print(f"  {'✓' if pm_filled == pm_target else '⚠'} PM verified  "
+              f"|  Target: {pm_target}  |  Filled: {pm_filled}")
+        bot_logger.log("PM_FILL_VERIFIED",
+            f"PM order {pm_order_id}: target={pm_target}, filled={pm_filled}")
+    elif pm_placed:
+        # PM order placed but no order ID returned — can't verify
+        # Conservatively assume full fill
+        pm_filled = pm_target
+        bot_logger.log("PM_NO_ORDER_ID",
+            f"PM order placed but no order ID in response. "
+            f"Assuming {pm_target} filled (conservative).")
+
+    # Parity check: if PM filled fewer than Kalshi, sell back excess
+    if pm_filled < kalshi_filled:
+        excess = kalshi_filled - pm_filled
+        print(f"  {_Y}⚠ PARITY MISMATCH: Kalshi={kalshi_filled}, "
+              f"PM={pm_filled} — selling back {excess} on Kalshi{_0}")
+        bot_logger.log("PARITY_MISMATCH",
+            f"Kalshi filled: {kalshi_filled}  |  PM filled: {pm_filled}\n"
+            f"Excess: {excess} contracts on Kalshi\n"
+            f"Initiating sell-back...")
+        _place_kalshi_sell_back(ticker_a, side_a, excess, bids_a)
+
+    # ── Final summary ──────────────────────────────────────────
+    matched = min(kalshi_filled, pm_filled)
     _last_execution_ts = time.monotonic()
     bot_logger.log("TRADE_CYCLE_COMPLETE",
         f"Direction: {direction}\n"
-        f"Final contracts: {affordable_n}\n"
-        f"Final profit: ${float(final_profit):.4f}\n"
-        f"Kalshi leg:     {ticker_a} {side_a} @ {kalshi_price_cents}¢ × {affordable_n}\n"
-        f"PM leg:         {ticker_b} {side_b} @ {pm_price_str} × {affordable_n}")
+        f"Kalshi filled:  {kalshi_filled} / {affordable_n} requested\n"
+        f"PM filled:      {pm_filled} / {pm_target} requested\n"
+        f"Matched pairs:  {matched}\n"
+        f"Kalshi leg:     {ticker_a} {side_a} @ {kalshi_price_cents}¢\n"
+        f"PM leg:         {ticker_b} {side_b} @ {pm_price_str}")
     print(f"{'=' * 60}\n")
+

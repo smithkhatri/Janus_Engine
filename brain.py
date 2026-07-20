@@ -45,7 +45,7 @@ latest_polymarket_book = {}
 active_opportunities = {}
 
 
-def check_direction(asks_A, asks_B, comm_fn_A, comm_fn_B, exchange_a, exchange_b, ticker_a, ticker_b, side_a, side_b, dir_label):
+def check_direction(asks_A, asks_B, bids_A, comm_fn_A, comm_fn_B, exchange_a, exchange_b, ticker_a, ticker_b, side_a, side_b, dir_label):
     """
     Walks the asks of both exchanges to find size N that maximizes:
         Profit = N * $1.00 - Cost_A(N) - Cost_B(N)
@@ -120,6 +120,7 @@ def check_direction(asks_A, asks_B, comm_fn_A, comm_fn_B, exchange_a, exchange_b
             "alloc_b": best_alloc_B,
             "asks_a": asks_A,
             "asks_b": asks_B,
+            "bids_a": bids_A,
         }
     return None
 
@@ -138,9 +139,13 @@ def check_arbitrage():
     kalshi_yes_asks = sorted(latest_kalshi_book.get("yes_ask", {}).items())
     pm_no_asks = sorted(latest_polymarket_book.get("no_ask", {}).items())
     
+    # Bids for sell-back: if we buy YES on Kalshi, sell-back needs YES bids
+    kalshi_yes_bids = sorted(latest_kalshi_book.get("yes_bid", {}).items(), reverse=True)
+
     opp_1 = check_direction(
         asks_A=kalshi_yes_asks,
         asks_B=pm_no_asks,
+        bids_A=kalshi_yes_bids,
         comm_fn_A=get_kalshi_commission,
         comm_fn_B=get_polymarket_commission,
         exchange_a="kalshi",
@@ -155,9 +160,13 @@ def check_arbitrage():
     kalshi_no_asks = sorted(latest_kalshi_book.get("no_ask", {}).items())
     pm_yes_asks = sorted(latest_polymarket_book.get("yes_ask", {}).items())
     
+    # Bids for sell-back: if we buy NO on Kalshi, sell-back needs NO bids
+    kalshi_no_bids = sorted(latest_kalshi_book.get("no_bid", {}).items(), reverse=True)
+
     opp_2 = check_direction(
         asks_A=kalshi_no_asks,
         asks_B=pm_yes_asks,
+        bids_A=kalshi_no_bids,
         comm_fn_A=get_kalshi_commission,
         comm_fn_B=get_polymarket_commission,
         exchange_a="kalshi",
