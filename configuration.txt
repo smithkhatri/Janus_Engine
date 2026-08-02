@@ -1,0 +1,38 @@
+# ============================================================
+# Janus Engine — Market Configuration
+# ============================================================
+# Edit the values below to change which markets the bot trades.
+# No need to touch any Python code.
+#
+# Lines starting with '#' are comments and are ignored.
+# ============================================================
+
+# THESE TWO MUST BE SAME OTHERWISE ENGINE WILL FAIL
+
+# Kalshi market ticker
+KALSHI_MARKET_TICKER = KXBIGBROTHER-26DEC31-BAR
+
+
+# Polymarket US market slug
+PM_MARKET_SLUG = rtc-bbus-s28-winner-2026-10-01-deeval
+
+
+#Print Configuration
+PRINT_SNAPSHOT = True
+PRINT_DELTAS = True
+
+
+# Execution Configuration
+TEST_MODE = True
+MAX_TRADE_DOLLARS = 50.00
+
+
+
+
+
+
+
+
+# Other notes
+# https://gateway.polymarket.us/v1/events/slug/(temp-nychigh-2026-07-31)
+# tc-temp-nychigh-2026-07-31-gte83lt84f
