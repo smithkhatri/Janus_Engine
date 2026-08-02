@@ -1,9 +1,0 @@
-Kalshi:
-You can buy yes and no position on kalshi by using the actual yes and no price
-You need to use price in cent to buy
-
-But on PM, you have to buy no with yes price (1-no_price). But for yes, you can buy with yes_pice.
-You need to use price in dollar to buy
-
-_place_pm_order('tc-temp-nychigh-2026-07-18-lt79f', 'ORDER_INTENT_BUY_SHORT','0.33','1') # To buy No for $0.67 (1 - 0.33 = 0.67)
-_place_pm_order('tc-temp-nychigh-2026-07-18-gte81lt82f', 'ORDER_INTENT_BUY_LONG','0.15','1') # To buy Yes for $0.15
