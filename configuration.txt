@@ -10,11 +10,12 @@
 # THESE TWO MUST BE SAME OTHERWISE ENGINE WILL FAIL
 
 # Kalshi market ticker
-KALSHI_MARKET_TICKER = KXBIGBROTHER-26DEC31-BAR
+KALSHI_MARKET_TICKER = KXHIGHTSFO-26AUG03-B80.5
 
 
 # Polymarket US market slug
-PM_MARKET_SLUG = rtc-bbus-s28-winner-2026-10-01-deeval
+PM_MARKET_SLUG = tc-temp-sfohigh-2026-08-03-gte80lt81f
+
 
 
 #Print Configuration
