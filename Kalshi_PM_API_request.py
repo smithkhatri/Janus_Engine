@@ -1,11 +1,9 @@
 import os
 import uuid
 import time
-import threading
 import base64
 import requests
 import datetime
-from decimal import Decimal, ROUND_UP, ROUND_HALF_EVEN
 from urllib.parse import urlparse
 # pyrefly: ignore [missing-import]
 from polymarket_us import PolymarketUS
@@ -57,8 +55,8 @@ def _kalshi_request(method: str, path: str, data: dict | None = None):
 def get_kalshi_balance() -> float:
     """Return available Kalshi balance in dollars."""
     resp = _kalshi_request("GET", "/portfolio/balance")
-    # return resp.json()["balance"] / 100
-    return 1000000
+    return resp.json()["balance"] / 100
+    
 
 
 PM_KEY_ID = os.getenv("PM_KEY_ID")
@@ -89,9 +87,7 @@ def get_pm_balance() -> float:
         f"https://api.polymarket.us{path}",
         headers=_pm_auth_headers("GET", path),
     )
-    # return float(resp.json()["balances"][0]["currentBalance"])
-    return 1000000
-
+    return float(resp.json()["balances"][0]["currentBalance"])
 
 
 def place_kalshi_buy_order(ticker, side, price_cents, count):
@@ -128,23 +124,36 @@ _pm_client = PolymarketUS(key_id=PM_KEY_ID, secret_key=PM_SECRET_KEY)
 
 def place_pm_buy_order(slug, intent, price_cent, count):
     """Place an IOC limit order on Polymarket US."""
-    price_dollar_str = price_cent/100
+    price_dollar_str = f"{price_cent/100:.4f}"
 
     if intent == 'yes':
         intent = "ORDER_INTENT_BUY_LONG"
     
     if intent == "no":
         intent = "ORDER_INTENT_BUY_SHORT"
-        price_dollar_str = (100 - price_cent)/100
+        price_dollar_str = f"{(100 - price_cent)/100:.4f}"
 
-    return _pm_client.orders.create({
+    created_order = _pm_client.orders.create({
         "marketSlug": slug,
         "intent": intent,
         "type": "ORDER_TYPE_LIMIT",
-        "price": {"value": str(price_dollar_str), "currency": "USD"},
+        "price": {"value": price_dollar_str, "currency": "USD"},
         "quantity": str(count),
         "tif": "TIME_IN_FORCE_IMMEDIATE_OR_CANCEL",
     })
+
+    order_id = created_order.get("id")
+    if order_id:
+        # Polymarket's read-database takes ~100-500ms to index the order after creation.
+        # Since this runs in a background thread, we can safely poll until it appears.
+        for _ in range(5):
+            
+            time.sleep(0.3)
+            try:
+                return _pm_client.orders.retrieve(order_id)
+            except Exception:
+                pass
+    return created_order
 
 
 # place_kalshi_order("ticker", 'yes', 10, 1) ask for yes is 10 cent
@@ -162,3 +171,21 @@ def place_pm_buy_order(slug, intent, price_cent, count):
 # "ORDER_INTENT_SELL_LONG"
 # "ORDER_INTENT_SELL_SHORT"
 
+# import json
+
+# kalshi_responce = place_kalshi_buy_order("KXHIGHTSFO-26AUG03-B80.5", 'yes', 20, 1)
+# print(float(kalshi_responce.json().get('fill_count', 0)))
+
+# print()
+
+# p_result = place_pm_buy_order("tc-temp-sfohigh-2026-08-03-gte80lt81f", 'yes', 24, 1)
+# executions = p_result.get('executions', [])
+
+# print(p_result)
+
+# print()
+
+# order_data = p_result.get('order', {})
+# if order_data:
+#     p_fill = float(order_data.get('cumQuantity', 0))
+#     print(p_fill)

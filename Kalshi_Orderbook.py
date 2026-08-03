@@ -234,8 +234,8 @@ async def orderbook_websocket(market_ticker, book: KalshiOrderBook = None, on_up
                         print(f"Subscribed: {data}")
 
                     elif msg_type == "orderbook_snapshot":
-                        # expected_seq = data.get("seq")
-                        # last_snapshot_time = time.time()
+                        expected_seq = data.get("seq")
+                        last_snapshot_time = time.time()
                         
                         yes_bids = data.get('msg', {}).get('yes_dollars_fp', [])
                         no_bids = data.get('msg', {}).get('no_dollars_fp', [])
@@ -246,8 +246,8 @@ async def orderbook_websocket(market_ticker, book: KalshiOrderBook = None, on_up
                         
                     elif msg_type == "orderbook_delta":
                         # 1-hour periodic reconnect safety mechanism
-                        if time.time() - last_snapshot_time > 3600:
-                            print("🔄 1 hour elapsed since last snapshot. Reconnecting to sync orderbook (just in case)...")
+                        if time.time() - last_snapshot_time > 3600 * 2:
+                            print("🔄 2 hour elapsed since last snapshot. Reconnecting to sync orderbook (just in case)...")
                             break
                             
                         seq = data.get("seq")
@@ -273,8 +273,6 @@ async def orderbook_websocket(market_ticker, book: KalshiOrderBook = None, on_up
                             on_update_callback()
 
                         # pretty_print_Kalshi_book(book)
-
-
 
         except asyncio.CancelledError:
             print("🛑 [Kalshi] Connection cancelled.")

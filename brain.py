@@ -1,13 +1,16 @@
+import threading
 from Kalshi_Orderbook import KalshiOrderBook, orderbook_websocket as kalshi_stream
 from PM_Orderbook import PM_OrderBook, stream_orderbook as pm_stream
 from execution import execute_arbitrage
 import time
 
+
 class JanusBrain:
     def __init__(self, kalshi_book, pm_book, kalshi_ticker, pm_ticker, max_spend, test_mode):
         self.kalshi_book = kalshi_book
         self.pm_book = pm_book
-        self.max_spend = max_spend
+        self.max_spend_scaled = int(max_spend * 10000)
+        self.remaining_budget_scaled = self.max_spend_scaled
         self.evaluations = 0
 
         self.kalshi_ticker = kalshi_ticker
@@ -60,11 +63,11 @@ class JanusBrain:
         # Scenario B: Kalshi NO + PM YES
         k_no = self.kalshi_book.best_no_ask_idx
         p_yes = self.pm_book.best_yes_ask_idx
-        
+
         if k_no + p_yes < 100: # Maybe add a statement to check if volume is not zero? maybe
             allocs, profit, volume = self._walk_book('no', 'yes')
             if profit > 0 and volume >= 50:
-                self._execute_trade(allocs, profit, volume, "Kalshi NO / PM YES", "no", "yes", kalshi_ticker=None, pm_ticker=None)
+                self._execute_trade(allocs, profit, volume, "Kalshi NO / PM YES", "no", "yes", kalshi_ticker=self.kalshi_ticker, pm_ticker=self.pm_ticker)
 
                 self.cooldown_until = time.time() + 1.5
 
@@ -78,7 +81,7 @@ class JanusBrain:
         # Maybe add a system where you proceed if only best prices from both platform are < 100 after commision. 
         # But wait.. maybe not cause commision depends on the total volume we are buying so, we do have to calculate other stuff first.
 
-        remaining_budget = int(self.max_spend * 10000)
+        remaining_budget = self.remaining_budget_scaled
 
         # 🚨 Use the globally synced balances! 🚨
         k_balance = self.live_k_balance
@@ -210,6 +213,7 @@ class JanusBrain:
                 # 🚨 OPTIMISTIC DEDUCTION FROM GLOBAL STATE 🚨
                 self.live_k_balance -= k_cost
                 self.live_p_balance -= p_cost
+                self.remaining_budget_scaled -= total_cost
                 
                 # Consume the volume locally for the next loop iteration
                 k_vol -= take
@@ -221,5 +225,10 @@ class JanusBrain:
         return allocations, total_profit_scaled, total_contracts
 
     def _execute_trade(self, allocs, total_profit, total_volume, strategy_name, kalshi_side, pm_side, kalshi_ticker, pm_ticker):
-        # We simply pass the baton to the execution module!
-        execute_arbitrage(allocs, total_profit, total_volume, strategy_name, kalshi_side, pm_side, kalshi_ticker, pm_ticker, self.test_mode)
+        # We pass the baton to the execution module in a background daemon thread 
+        # so the blocking API calls do not freeze our lightning-fast WebSocket loop!
+        threading.Thread(
+            target=execute_arbitrage,
+            args=(allocs, total_profit, total_volume, strategy_name, kalshi_side, pm_side, kalshi_ticker, pm_ticker, self.test_mode),
+            daemon=True
+        ).start()

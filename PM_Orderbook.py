@@ -5,7 +5,6 @@ import os
 import time
 # pyrefly: ignore [missing-import]
 import websockets
-from test_helpers import pretty_print_PM_Orderbook
 # pyrefly: ignore [missing-import]
 from cryptography.hazmat.primitives.asymmetric import ed25519
 # pyrefly: ignore [missing-import]
@@ -178,12 +177,6 @@ async def stream_orderbook(market_slug, PM_book, on_update_callback=None):
                     #     first_message = False
 
                     # pretty_print_PM_Orderbook(PM_book)
-
-                    
-
-                    
-
-
 
         except asyncio.CancelledError:
             print("🛑 [Polymarket] Connection cancelled.")
