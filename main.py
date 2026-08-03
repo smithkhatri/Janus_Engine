@@ -5,7 +5,7 @@ from Kalshi_Orderbook import KalshiOrderBook, orderbook_websocket as kalshi_ws, 
 from helpers import log_flusher, balance_syncer
 
 
-MAX_TRADE_DOLLARS = 6
+MAX_TRADE_DOLLARS = 10000
 test_mode = True
 
 

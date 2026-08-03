@@ -57,7 +57,8 @@ def _kalshi_request(method: str, path: str, data: dict | None = None):
 def get_kalshi_balance() -> float:
     """Return available Kalshi balance in dollars."""
     resp = _kalshi_request("GET", "/portfolio/balance")
-    return resp.json()["balance"] / 100
+    # return resp.json()["balance"] / 100
+    return 1000000
 
 
 PM_KEY_ID = os.getenv("PM_KEY_ID")
@@ -88,7 +89,8 @@ def get_pm_balance() -> float:
         f"https://api.polymarket.us{path}",
         headers=_pm_auth_headers("GET", path),
     )
-    return float(resp.json()["balances"][0]["currentBalance"])
+    # return float(resp.json()["balances"][0]["currentBalance"])
+    return 1000000
 
 
 
