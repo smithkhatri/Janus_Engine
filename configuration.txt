@@ -27,12 +27,6 @@ TEST_MODE = True
 MAX_TRADE_DOLLARS = 50.00
 
 
-
-
-
-
-
-
 # Other notes
-# https://gateway.polymarket.us/v1/events/slug/(temp-nychigh-2026-07-31)
+# https://gateway.polymarket.us/v1/events/slug/
 # tc-temp-nychigh-2026-07-31-gte83lt84f
