@@ -60,10 +60,11 @@ async def log_flusher():
                 # Write all accumulated trades at once
                 writer.writerows(to_write)
 
-async def balance_syncer(brain_instance):
+async def balance_syncer(shared_balance):
     """
     BACKGROUND TASK: Periodically fetches the true wallet balances from Kalshi/PM APIs 
-    and forcefully overwrites the brain's internal state. This heals any optimistic deduction errors.
+    and forcefully overwrites the shared balance state. This heals any optimistic deduction errors.
+    All brains share this single balance object.
     """
     while True:
         try:
@@ -73,8 +74,8 @@ async def balance_syncer(brain_instance):
             
             # Convert to scaled units (hundredths of a cent)
             # We use round() to prevent IEEE 754 float truncation issues before int() cast
-            brain_instance.live_k_balance = int(round(true_k_balance_dollars * 10000))
-            brain_instance.live_p_balance = int(round(true_p_balance_dollars * 10000))
+            shared_balance.k_balance = int(round(true_k_balance_dollars * 10000))
+            shared_balance.p_balance = int(round(true_p_balance_dollars * 10000))
             
         except Exception as e:
             # If the API fails, we just ignore it. The engine will keep running on 

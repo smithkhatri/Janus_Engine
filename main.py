@@ -1,36 +1,37 @@
+import json
 import asyncio
-from brain import JanusBrain
-from PM_Orderbook import PM_OrderBook, MARKET_SLUG as PM_SLUG, stream_orderbook as pm_ws
-from Kalshi_Orderbook import KalshiOrderBook, orderbook_websocket as kalshi_ws, MARKET_TICKER as KALSHI_TICKER
+from orderbook_router import OrderbookRouter
+from Kalshi_Orderbook import orderbook_websocket as kalshi_ws
+from PM_Orderbook import stream_orderbook as pm_ws
 from helpers import log_flusher, balance_syncer
 
 
-MAX_TRADE_DOLLARS = 2
-test_mode = False
-
-
-pm_book = PM_OrderBook()
-kalshi_book = KalshiOrderBook()
-
-# Initialize the Brain globally
-janus_brain = JanusBrain(kalshi_book, pm_book, kalshi_ticker=KALSHI_TICKER, pm_ticker=PM_SLUG, max_spend=MAX_TRADE_DOLLARS, test_mode=test_mode)
-
-# Callback function to inject into the WebSocket loops
-def on_market_update():
-    janus_brain.evaluate_arbitrage()
+def load_registry(path="market_registry.json"):
+    with open(path) as f:
+        return json.load(f)
 
 
 async def main():
-    print("🚀 Igniting Janus Engine Mark-2 Strategy Engine...")
-    
-    # NOTE: You MUST update PM_Orderbook.py and Kalshi_Orderbook.py 
-    # to accept `on_update_callback` in their functions and trigger it!
-    
+    registry = load_registry()
+    pairs = registry["pairs"]
+    settings = registry["global_settings"]
+
+    # Build the router (creates all orderbooks + brains)
+    router = OrderbookRouter(pairs, settings)
+
+    # Extract all tickers and slugs for the WS subscriptions
+    kalshi_tickers = router.get_all_kalshi_tickers()
+    pm_slugs = router.get_all_pm_slugs()
+
+    print(f"🚀 Igniting Janus Engine Mark-2 — {len(kalshi_tickers)} markets loaded.")
+    print(f"   Kalshi tickers: {kalshi_tickers}")
+    print(f"   PM slugs: {pm_slugs}")
+
     await asyncio.gather(
-        kalshi_ws(KALSHI_TICKER, kalshi_book, on_market_update),
-        pm_ws(PM_SLUG, pm_book, on_update_callback=on_market_update),
+        kalshi_ws(kalshi_tickers, router),          # 1 connection, N tickers
+        pm_ws(pm_slugs, router),                    # 1 connection, up to 100 slugs
         log_flusher(),
-        balance_syncer(janus_brain)
+        balance_syncer(router.shared_balance)
     )
 
 if __name__ == "__main__":

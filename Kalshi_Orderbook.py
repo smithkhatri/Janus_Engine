@@ -123,28 +123,6 @@ class KalshiOrderBook:
         return round(float(qty_str) * 100)
 
 
-def _load_market_config(key):
-    # Reads single market name
-    # So this is only for Janus_Engine_V1.0
-    """Read a KEY = VALUE from market_slugs.txt (next to this script)."""
-    import pathlib
-    cfg_path = pathlib.Path(__file__).resolve().parent / "configuration.txt"
-    with open(cfg_path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                k, v = line.split("=", 1)
-                if k.strip() == key:
-                    return v.strip()
-    raise RuntimeError(f"{key} not found in {cfg_path}")
-
-
-MARKET_TICKER = _load_market_config("KALSHI_MARKET_TICKER")
-PRINT_SNAPSHOT = _load_market_config("PRINT_SNAPSHOT")
-PRINT_DELTAS = _load_market_config("PRINT_DELTAS")
-
 import os
 # pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
@@ -181,8 +159,12 @@ def create_headers(private_key, method: str, path: str) -> dict:
         "KALSHI-ACCESS-TIMESTAMP": timestamp,
     }
 
-async def orderbook_websocket(market_ticker, book: KalshiOrderBook = None, on_update_callback = None):
-    if book is None: book = KalshiOrderBook()
+async def orderbook_websocket(market_tickers, router):
+    """
+    Multi-market Kalshi WebSocket.
+    Subscribes to ALL tickers on a single connection and routes
+    each message to the correct orderbook via the router.
+    """
 
     with open(PRIVATE_KEY_PATH, 'rb') as f:
         private_key = serialization.load_pem_private_key(
@@ -205,10 +187,10 @@ async def orderbook_websocket(market_ticker, book: KalshiOrderBook = None, on_up
                 ping_timeout=20,
                 close_timeout=5,
             ) as websocket:
-                print(f"Connected! Subscribing to orderbook for {market_ticker}")
+                print(f"[Kalshi] Connected! Subscribing to {len(market_tickers)} markets.")
 
-                
-                book.clear()
+                # Clear ALL kalshi books on reconnect (fresh snapshots incoming)
+                router.clear_all_kalshi_books()
                 expected_seq = None
                 last_snapshot_time = time.time()
 
@@ -217,7 +199,7 @@ async def orderbook_websocket(market_ticker, book: KalshiOrderBook = None, on_up
                     "cmd": "subscribe",
                     "params": {
                         "channels": ["orderbook_delta"],
-                        "market_ticker": market_ticker
+                        "market_tickers": market_tickers
                     }
                 }
 
@@ -231,25 +213,29 @@ async def orderbook_websocket(market_ticker, book: KalshiOrderBook = None, on_up
                     msg_type = data.get("type")
 
                     if msg_type == "subscribed":
-                        print(f"Subscribed: {data}")
+                        print(f"[Kalshi] Subscribed: {data}")
 
                     elif msg_type == "orderbook_snapshot":
                         expected_seq = data.get("seq")
                         last_snapshot_time = time.time()
                         
-                        yes_bids = data.get('msg', {}).get('yes_dollars_fp', [])
-                        no_bids = data.get('msg', {}).get('no_dollars_fp', [])
-
-                        book.apply_snapshot(yes_bids, no_bids)
-                        if on_update_callback:
-                            on_update_callback()
+                        msg_payload = data.get('msg', {})
+                        ticker = msg_payload.get('market_ticker')
+                        
+                        book = router.get_kalshi_book(ticker)
+                        if book:
+                            yes_bids = msg_payload.get('yes_dollars_fp', [])
+                            no_bids = msg_payload.get('no_dollars_fp', [])
+                            book.apply_snapshot(yes_bids, no_bids)
+                            router.on_kalshi_update(ticker)
                         
                     elif msg_type == "orderbook_delta":
-                        # 1-hour periodic reconnect safety mechanism
+                        # 2-hour periodic reconnect safety mechanism
                         if time.time() - last_snapshot_time > 3600 * 2:
-                            print("🔄 2 hour elapsed since last snapshot. Reconnecting to sync orderbook (just in case)...")
+                            print("🔄 2 hours elapsed since last snapshot. Reconnecting to sync orderbook...")
                             break
                             
+                        # Sequence tracking (global across all markets on this connection)
                         seq = data.get("seq")
                         if expected_seq is not None and seq is not None:
                             if seq != expected_seq + 1:
@@ -259,20 +245,19 @@ async def orderbook_websocket(market_ticker, book: KalshiOrderBook = None, on_up
                             expected_seq = seq
                             
                         msg_payload = data.get('msg', {})
+                        ticker = msg_payload.get('market_ticker')
 
                         price_str = msg_payload.get('price_dollars')
                         delta_str = msg_payload.get('delta_fp')
                         side = msg_payload.get('side')
 
                         if not price_str or not delta_str or not side:
-                            continue # Skip if payload is malformed
+                            continue  # Skip if payload is malformed
 
-                        book.apply_delta(price_str, delta_str, side)
-
-                        if on_update_callback:
-                            on_update_callback()
-
-                        # pretty_print_Kalshi_book(book)
+                        book = router.get_kalshi_book(ticker)
+                        if book:
+                            book.apply_delta(price_str, delta_str, side)
+                            router.on_kalshi_update(ticker)
 
         except asyncio.CancelledError:
             print("🛑 [Kalshi] Connection cancelled.")
@@ -283,9 +268,3 @@ async def orderbook_websocket(market_ticker, book: KalshiOrderBook = None, on_up
             print(f"   └─ Reconnecting in {backoff}s...")
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, max_backoff)
-
-
-# if __name__ == "__main__":
-#     asyncio.run(orderbook_websocket(MARKET_TICKER, kalshi_orderbook_1))
-
-

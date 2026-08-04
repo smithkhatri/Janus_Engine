@@ -3,7 +3,7 @@ from helpers import log_trade
 from Kalshi_PM_API_request import place_pm_buy_order, place_kalshi_buy_order
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-_executor = ThreadPoolExecutor(max_workers=2)
+_executor = ThreadPoolExecutor(max_workers=10)
 
 def execute_arbitrage(allocs, total_profit_scaled, total_volume, strategy_name, kalshi_side, pm_side, kalshi_ticker, pm_ticker, test_mode=True):
     """

@@ -73,24 +73,6 @@ class PM_OrderBook:
         self.best_no_ask_idx =  100
 
 
-
-def _load_market_config(key):
-    """Read a KEY = VALUE from market_slugs.txt (next to this script)."""
-    import pathlib
-    cfg_path = pathlib.Path(__file__).resolve().parent / "configuration.txt"
-    with open(cfg_path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                k, v = line.split("=", 1)
-                if k.strip() == key:
-                    return v.strip()
-    raise RuntimeError(f"{key} not found in {cfg_path}")
-
-
-MARKET_SLUG = _load_market_config("PM_MARKET_SLUG")
 load_dotenv("API_key.env")
 KEY_ID = os.getenv("PM_KEY_ID")
 SECRET_KEY_B64 = os.getenv("PM_SECRET_KEY")
@@ -115,7 +97,12 @@ def build_auth_headers(secret_key_b64: str, key_id: str, method: str, path: str)
     }
 
 
-async def stream_orderbook(market_slug, PM_book, on_update_callback=None):
+async def stream_orderbook(market_slugs, router):
+    """
+    Multi-market Polymarket WebSocket.
+    Subscribes to ALL slugs on a single connection and routes
+    each message to the correct orderbook via the router.
+    """
     backoff = 1
     max_backoff = 30
 
@@ -131,22 +118,19 @@ async def stream_orderbook(market_slug, PM_book, on_update_callback=None):
                 ping_timeout=20,
                 close_timeout=5,
             ) as ws:
-                print(f"Connected. Subscribing to market data for {market_slug}")
+                print(f"[PM] Connected! Subscribing to {len(market_slugs)} markets.")
 
                 subscribe_msg = {
                     "subscribe": {
                         "requestId": "md-sub-1",
                         "subscriptionType": 1,
-                        "marketSlugs": [market_slug],
+                        "marketSlugs": market_slugs,
                     }
                 }
                 await ws.send(json.dumps(subscribe_msg))
 
-                # PM_book is now passed in as an argument
-
                 # Reset backoff on successful connection
                 backoff = 1
-                # first_message = True
 
                 async for raw in ws:
                     data = json.loads(raw)
@@ -155,28 +139,22 @@ async def stream_orderbook(market_slug, PM_book, on_update_callback=None):
                         continue  # keep-alive, nothing to do
 
                     if data.get("error"):
-                        print(f"Error: {data['error']}")
+                        print(f"[PM] Error: {data['error']}")
                         continue
 
                     market_data = data.get("marketData")
                     if market_data is None:
-                        # Might be a trade or lite payload depending on what you subscribed to
-                        print(f"Non-book message: {data}")
                         continue
 
+                    # Route by marketSlug
+                    slug = market_data.get("marketSlug")
                     bids = market_data.get("bids") or []
                     offers = market_data.get("offers") or []
 
-                    PM_book.update_book(bids, offers)
-                    if on_update_callback:
-                        on_update_callback()
-
-                    # if first_message:
-                    #     if PRINT_SNAPSHOT:
-                    #         print_formatted_book(PM_ORDERBOOK)
-                    #     first_message = False
-
-                    # pretty_print_PM_Orderbook(PM_book)
+                    book = router.get_pm_book(slug)
+                    if book:
+                        book.update_book(bids, offers)
+                        router.on_pm_update(slug)
 
         except asyncio.CancelledError:
             print("🛑 [Polymarket] Connection cancelled.")
@@ -186,7 +164,3 @@ async def stream_orderbook(market_slug, PM_book, on_update_callback=None):
             print(f"   └─ Reconnecting in {backoff}s...")
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, max_backoff)
-
-
-# if __name__ == "__main__":
-#     asyncio.run(stream_orderbook(MARKET_SLUG))

@@ -1,12 +1,10 @@
 import threading
-from Kalshi_Orderbook import KalshiOrderBook, orderbook_websocket as kalshi_stream
-from PM_Orderbook import PM_OrderBook, stream_orderbook as pm_stream
 from execution import execute_arbitrage
 import time
 
 
 class JanusBrain:
-    def __init__(self, kalshi_book, pm_book, kalshi_ticker, pm_ticker, max_spend, test_mode):
+    def __init__(self, kalshi_book, pm_book, kalshi_ticker, pm_ticker, max_spend, test_mode, shared_balance):
         self.kalshi_book = kalshi_book
         self.pm_book = pm_book
         self.max_spend_scaled = int(max_spend * 10000)
@@ -18,9 +16,8 @@ class JanusBrain:
         self.cooldown_until = 0.0
         self.test_mode = test_mode
         
-        # 🚨 LIVE BALANCES (Updated by background syncer) 🚨
-        self.live_k_balance = 0
-        self.live_p_balance = 0
+        # 🚨 SHARED BALANCE (Updated by background syncer, shared across ALL brains) 🚨
+        self.shared_balance = shared_balance
 
 
     def kalshi_commission(self, n: int, p: int) -> int:
@@ -83,9 +80,9 @@ class JanusBrain:
 
         remaining_budget = self.remaining_budget_scaled
 
-        # 🚨 Use the globally synced balances! 🚨
-        k_balance = self.live_k_balance
-        p_balance = self.live_p_balance
+        # 🚨 Use the globally synced balances (shared across ALL brains)! 🚨
+        k_balance = self.shared_balance.k_balance
+        p_balance = self.shared_balance.p_balance
 
         # 1. Grab local pointers to start the walk
         if kalshi_side == 'yes':
@@ -210,9 +207,9 @@ class JanusBrain:
                 k_balance -= k_cost
                 p_balance -= p_cost
                 
-                # 🚨 OPTIMISTIC DEDUCTION FROM GLOBAL STATE 🚨
-                self.live_k_balance -= k_cost
-                self.live_p_balance -= p_cost
+                # 🚨 OPTIMISTIC DEDUCTION FROM SHARED BALANCE 🚨
+                self.shared_balance.k_balance -= k_cost
+                self.shared_balance.p_balance -= p_cost
                 self.remaining_budget_scaled -= total_cost
                 
                 # Consume the volume locally for the next loop iteration
