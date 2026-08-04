@@ -1,0 +1,4 @@
+timestamp,strategy,kalshi_side,pm_side,volume_scaled,profit_scaled,allocations
+1785776307.2422714,Kalshi YES / PM NO,yes,no,200,100,200@K25/P72
+1785790713.3731568,Kalshi NO / PM YES,no,yes,201,104,201@K49/P47
+1785791882.2322657,Kalshi YES / PM NO,yes,no,201,104,201@K61/P35
