@@ -3,7 +3,8 @@ import asyncio
 from orderbook_router import OrderbookRouter
 from Kalshi_Orderbook import orderbook_websocket as kalshi_ws
 from PM_Orderbook import stream_orderbook as pm_ws
-from helpers import log_flusher, balance_syncer
+from helpers import balance_syncer
+from trade_logger import trade_log_flusher
 
 
 def load_registry(path="market_registry.json"):
@@ -30,7 +31,7 @@ async def main():
     await asyncio.gather(
         kalshi_ws(kalshi_tickers, router),          # 1 connection, N tickers
         pm_ws(pm_slugs, router),                    # 1 connection, up to 100 slugs
-        log_flusher(),
+        trade_log_flusher(),
         balance_syncer(router.shared_balance)
     )
 

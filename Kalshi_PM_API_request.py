@@ -156,6 +156,54 @@ def place_pm_buy_order(slug, intent, price_cent, count):
     return created_order
 
 
+def unwind_kalshi(ticker, side_held, qty):
+    """
+    Close a Kalshi position by buying the opposite side at 99¢ IOC.
+    Kalshi has no explicit "sell" — buying NO = selling YES (and vice versa).
+    The order engine gives price improvement, so we fill at best available.
+    """
+    opposite = 'no' if side_held == 'yes' else 'yes'
+    return place_kalshi_buy_order(ticker, opposite, 99, qty)
+
+
+def unwind_pm(slug, side_held, qty):
+    """
+    Close a PM position using SELL_LONG/SELL_SHORT at aggressive IOC price.
+    
+    SELL_LONG: sells YES contracts we hold (accept as low as 1¢)
+    SELL_SHORT: sells NO contracts we hold (pay up to 99¢ YES to close)
+    
+    Cheaper than buy-opposite because it directly closes the position
+    instead of creating a new opposing position (one fee event, not two).
+    """
+    if side_held == 'yes':
+        intent = "ORDER_INTENT_SELL_LONG"
+        price_str = "0.0100"  # Accept minimum 1¢ for our YES contracts
+    else:
+        intent = "ORDER_INTENT_SELL_SHORT"
+        price_str = "0.9900"  # Pay up to 99¢ YES to close our NO position
+
+    created_order = _pm_client.orders.create({
+        "marketSlug": slug,
+        "intent": intent,
+        "type": "ORDER_TYPE_LIMIT",
+        "price": {"value": price_str, "currency": "USD"},
+        "quantity": str(qty),
+        "tif": "TIME_IN_FORCE_IMMEDIATE_OR_CANCEL",
+    })
+
+    # Same polling loop as buy orders — PM needs time to index the order
+    order_id = created_order.get("id")
+    if order_id:
+        for _ in range(5):
+            time.sleep(0.3)
+            try:
+                return _pm_client.orders.retrieve(order_id)
+            except Exception:
+                pass
+    return created_order
+
+
 # place_kalshi_order("ticker", 'yes', 10, 1) ask for yes is 10 cent
 # buy 1 yes for 10 cent
 # place_kalshi_order("ticker", 'no', 10, 1) ask for no is 10 cent

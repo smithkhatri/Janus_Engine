@@ -32,6 +32,7 @@ class OrderbookRouter:
 
         test_mode = global_settings.get("test_mode", True)
         per_pair_max = global_settings.get("per_pair_max_dollars", 5)
+        log_orderbooks = global_settings.get("log_orderbooks", False)
 
         for pair_config in pairs:
             if not pair_config.get("enabled", True):
@@ -49,7 +50,9 @@ class OrderbookRouter:
                 pm_ticker=pm_slug,
                 max_spend=per_pair_max,
                 test_mode=test_mode,
-                shared_balance=self.shared_balance
+                shared_balance=self.shared_balance,
+                pair_id=pair_id,
+                log_orderbooks=log_orderbooks
             )
 
             self.pairs[pair_id] = {

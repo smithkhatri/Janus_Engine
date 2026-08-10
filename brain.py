@@ -1,10 +1,11 @@
 import threading
 from execution import execute_arbitrage
+from trade_logger import capture_book_snapshot
 import time
 
 
 class JanusBrain:
-    def __init__(self, kalshi_book, pm_book, kalshi_ticker, pm_ticker, max_spend, test_mode, shared_balance):
+    def __init__(self, kalshi_book, pm_book, kalshi_ticker, pm_ticker, max_spend, test_mode, shared_balance, pair_id, log_orderbooks):
         self.kalshi_book = kalshi_book
         self.pm_book = pm_book
         self.max_spend_scaled = int(max_spend * 10000)
@@ -15,6 +16,8 @@ class JanusBrain:
         self.pm_ticker = pm_ticker
         self.cooldown_until = 0.0
         self.test_mode = test_mode
+        self.pair_id = pair_id
+        self.log_orderbooks = log_orderbooks
         
         # 🚨 SHARED BALANCE (Updated by background syncer, shared across ALL brains) 🚨
         self.shared_balance = shared_balance
@@ -52,7 +55,7 @@ class JanusBrain:
         if k_yes + p_no < 99: # <======================================================================================================== TEST FOR NOW
             allocs, profit, volume = self._walk_book('yes', 'no')
             if profit > 0 and volume >= 50:
-                self._execute_trade(allocs, profit, volume, "Kalshi YES / PM NO", "yes", "no", kalshi_ticker=self.kalshi_ticker, pm_ticker=self.pm_ticker)
+                self._execute_trade(allocs, "Kalshi YES / PM NO", "yes", "no")
 
                 self.cooldown_until = time.time() + 1.5
                 return
@@ -65,7 +68,7 @@ class JanusBrain:
             # Maybe add a statement to check if volume is not zero? maybe
             allocs, profit, volume = self._walk_book('no', 'yes')
             if profit > 0 and volume >= 50:
-                self._execute_trade(allocs, profit, volume, "Kalshi NO / PM YES", "no", "yes", kalshi_ticker=self.kalshi_ticker, pm_ticker=self.pm_ticker)
+                self._execute_trade(allocs, "Kalshi NO / PM YES", "no", "yes")
 
                 self.cooldown_until = time.time() + 1.5
 
@@ -222,11 +225,18 @@ class JanusBrain:
 
         return allocations, total_profit_scaled, total_contracts
 
-    def _execute_trade(self, allocs, total_profit, total_volume, strategy_name, kalshi_side, pm_side, kalshi_ticker, pm_ticker):
-        # We pass the baton to the execution module in a background daemon thread 
-        # so the blocking API calls do not freeze our lightning-fast WebSocket loop!
+    def _execute_trade(self, allocs, strategy_name, kalshi_side, pm_side):
+        # Capture pre-trade snapshot BEFORE spawning thread (reflects what the brain saw)
+        pre_snapshot = None
+        if self.log_orderbooks:
+            pre_snapshot = capture_book_snapshot(self.kalshi_book, self.pm_book)
+
+        # Background daemon thread so blocking API calls don't freeze the WebSocket loop
         threading.Thread(
             target=execute_arbitrage,
-            args=(allocs, total_profit, total_volume, strategy_name, kalshi_side, pm_side, kalshi_ticker, pm_ticker, self.test_mode),
+            args=(allocs, strategy_name,
+                  kalshi_side, pm_side, self.kalshi_ticker, self.pm_ticker,
+                  self.pair_id, self.test_mode, self.log_orderbooks, pre_snapshot,
+                  self.kalshi_book, self.pm_book),
             daemon=True
         ).start()
