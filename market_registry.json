@@ -116,8 +116,8 @@
     }
   ],
   "global_settings": {
-    "max_trade_dollars": 20,
-    "per_pair_max_dollars": 4,
+    "max_trade_dollars": 40,
+    "per_pair_max_dollars": 20,
     "test_mode": false,
     "log_orderbooks": true
   }
