@@ -113,11 +113,161 @@
       "kalshi_ticker": "KXHIGHTSFO-26AUG10-B76.5",
       "pm_slug": "tc-temp-sfohigh-2026-08-10-gte76lt77f",
       "enabled": true
+    },
+    {
+      "id": "sfo-high-aug11-lt71",
+      "kalshi_ticker": "KXHIGHTSFO-26AUG11-T71",
+      "pm_slug": "tc-temp-sfohigh-2026-08-11-lt71f",
+      "enabled": true
+    },
+    {
+      "id": "sfo-high-aug11-72to73",
+      "kalshi_ticker": "KXHIGHTSFO-26AUG11-B72.5",
+      "pm_slug": "tc-temp-sfohigh-2026-08-11-gte72lt73f",
+      "enabled": true
+    },
+    {
+      "id": "sfo-high-aug11-74to75",
+      "kalshi_ticker": "KXHIGHTSFO-26AUG11-B74.5",
+      "pm_slug": "tc-temp-sfohigh-2026-08-11-gte74lt75f",
+      "enabled": true
+    },
+    {
+      "id": "sfo-high-aug11-76to77",
+      "kalshi_ticker": "KXHIGHTSFO-26AUG11-B76.5",
+      "pm_slug": "tc-temp-sfohigh-2026-08-11-gte76lt77f",
+      "enabled": true
+    },
+    {
+      "id": "sfo-high-aug11-78to79",
+      "kalshi_ticker": "KXHIGHTSFO-26AUG11-B78.5",
+      "pm_slug": "tc-temp-sfohigh-2026-08-11-gte78lt79f",
+      "enabled": true
+    },
+    {
+      "id": "lax-high-aug11-lt73",
+      "kalshi_ticker": "KXHIGHLAX-26AUG11-T73",
+      "pm_slug": "tc-temp-laxhigh-2026-08-11-lt73f",
+      "enabled": true
+    },
+    {
+      "id": "lax-high-aug11-74to75",
+      "kalshi_ticker": "KXHIGHLAX-26AUG11-B74.5",
+      "pm_slug": "tc-temp-laxhigh-2026-08-11-gte74lt75f",
+      "enabled": true
+    },
+    {
+      "id": "lax-high-aug11-76to77",
+      "kalshi_ticker": "KXHIGHLAX-26AUG11-B76.5",
+      "pm_slug": "tc-temp-laxhigh-2026-08-11-gte76lt77f",
+      "enabled": true
+    },
+    {
+      "id": "lax-high-aug11-78to79",
+      "kalshi_ticker": "KXHIGHLAX-26AUG11-B78.5",
+      "pm_slug": "tc-temp-laxhigh-2026-08-11-gte78lt79f",
+      "enabled": true
+    },
+    {
+      "id": "lax-high-aug11-80to81",
+      "kalshi_ticker": "KXHIGHLAX-26AUG11-B80.5",
+      "pm_slug": "tc-temp-laxhigh-2026-08-11-gte80lt81f",
+      "enabled": true
+    },
+    {
+      "id": "chi-high-aug11-lt79",
+      "kalshi_ticker": "KXHIGHCHI-26AUG11-T79",
+      "pm_slug": "tc-temp-mdwhigh-2026-08-11-lt79f",
+      "enabled": true
+    },
+    {
+      "id": "chi-high-aug11-80to81",
+      "kalshi_ticker": "KXHIGHCHI-26AUG11-B80.5",
+      "pm_slug": "tc-temp-mdwhigh-2026-08-11-gte80lt81f",
+      "enabled": true
+    },
+    {
+      "id": "chi-high-aug11-82to83",
+      "kalshi_ticker": "KXHIGHCHI-26AUG11-B82.5",
+      "pm_slug": "tc-temp-mdwhigh-2026-08-11-gte82lt83f",
+      "enabled": true
+    },
+    {
+      "id": "chi-high-aug11-84to85",
+      "kalshi_ticker": "KXHIGHCHI-26AUG11-B84.5",
+      "pm_slug": "tc-temp-mdwhigh-2026-08-11-gte84lt85f",
+      "enabled": true
+    },
+    {
+      "id": "chi-high-aug11-86to87",
+      "kalshi_ticker": "KXHIGHCHI-26AUG11-B86.5",
+      "pm_slug": "tc-temp-mdwhigh-2026-08-11-gte86lt87f",
+      "enabled": true
+    },
+    {
+      "id": "mia-high-aug11-lt87",
+      "kalshi_ticker": "KXHIGHMIA-26AUG11-T87",
+      "pm_slug": "tc-temp-miahigh-2026-08-11-lt87f",
+      "enabled": true
+    },
+    {
+      "id": "mia-high-aug11-88to89",
+      "kalshi_ticker": "KXHIGHMIA-26AUG11-B88.5",
+      "pm_slug": "tc-temp-miahigh-2026-08-11-gte88lt89f",
+      "enabled": true
+    },
+    {
+      "id": "mia-high-aug11-90to91",
+      "kalshi_ticker": "KXHIGHMIA-26AUG11-B90.5",
+      "pm_slug": "tc-temp-miahigh-2026-08-11-gte90lt91f",
+      "enabled": true
+    },
+    {
+      "id": "mia-high-aug11-92to93",
+      "kalshi_ticker": "KXHIGHMIA-26AUG11-B92.5",
+      "pm_slug": "tc-temp-miahigh-2026-08-11-gte92lt93f",
+      "enabled": true
+    },
+    {
+      "id": "mia-high-aug11-94to95",
+      "kalshi_ticker": "KXHIGHMIA-26AUG11-B94.5",
+      "pm_slug": "tc-temp-miahigh-2026-08-11-gte94lt95f",
+      "enabled": true
+    },
+    {
+      "id": "nyc-high-aug11-lt88",
+      "kalshi_ticker": "KXHIGHNY-26AUG11-T88",
+      "pm_slug": "tc-temp-nychigh-2026-08-11-lt88f",
+      "enabled": true
+    },
+    {
+      "id": "nyc-high-aug11-89to90",
+      "kalshi_ticker": "KXHIGHNY-26AUG11-B89.5",
+      "pm_slug": "tc-temp-nychigh-2026-08-11-gte89lt90f",
+      "enabled": true
+    },
+    {
+      "id": "nyc-high-aug11-91to92",
+      "kalshi_ticker": "KXHIGHNY-26AUG11-B91.5",
+      "pm_slug": "tc-temp-nychigh-2026-08-11-gte91lt92f",
+      "enabled": true
+    },
+    {
+      "id": "nyc-high-aug11-93to94",
+      "kalshi_ticker": "KXHIGHNY-26AUG11-B93.5",
+      "pm_slug": "tc-temp-nychigh-2026-08-11-gte93lt94f",
+      "enabled": true
+    },
+    {
+      "id": "nyc-high-aug11-95to96",
+      "kalshi_ticker": "KXHIGHNY-26AUG11-B95.5",
+      "pm_slug": "tc-temp-nychigh-2026-08-11-gte95lt96f",
+      "enabled": true
     }
   ],
   "global_settings": {
     "max_trade_dollars": 40,
-    "per_pair_max_dollars": 20,
+    "per_pair_max_dollars": 10,
     "test_mode": false,
     "log_orderbooks": true
   }
