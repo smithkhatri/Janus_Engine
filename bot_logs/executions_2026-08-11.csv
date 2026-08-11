@@ -1,0 +1,6 @@
+timestamp,pair_id,strategy,k_price,p_price,intended_qty,theoretical_profit,k_fill_qty,k_fill_time_ms,k_status_code,p_fill_qty,p_fill_time_ms,p_status_code,outcome,unwind_action,unwind_pnl,net_realized_pnl
+1786479262.208316,sfo-high-aug11-76to77,Kalshi NO / PM YES,98,1,4.82,382,4.82,79,201,4.82,398,200,PERFECT,NONE,0,382
+1786479262.3103945,sfo-high-aug11-76to77,Kalshi NO / PM YES,98,1,4.0,300,4.0,77,201,4.0,368,200,PERFECT,NONE,0,300
+1786479262.4572592,sfo-high-aug11-76to77,Kalshi NO / PM YES,98,1,4.0,300,4.0,69,201,4.0,366,200,PERFECT,NONE,0,300
+1786479262.5993004,sfo-high-aug11-76to77,Kalshi NO / PM YES,98,1,4.0,300,4.0,81,201,4.0,385,200,PERFECT,NONE,0,300
+1786479262.702232,sfo-high-aug11-76to77,Kalshi NO / PM YES,98,1,4.0,300,0.0,79,201,4.0,695,200,P_ONLY,SELL_P_YES_FAILED,-400,-400
