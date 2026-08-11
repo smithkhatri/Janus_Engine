@@ -189,7 +189,3 @@ def analyze_bot_log(date_str):
             print("\n[!] No matching snapshot found within 10 seconds for this execution.")
             
         print("="*80 + "\n")
-
-
-# Fetch and analyze logs for August 10, 2026
-analyze_bot_log('2026-08-10')
