@@ -52,25 +52,25 @@ class JanusBrain:
         p_no = self.pm_book.best_no_ask_idx
         
         # We check < 100 as a quick filter. If the raw prices cross 100, we check deep book.
-        if k_yes + p_no < 99: # <======================================================================================================== TEST FOR NOW
+        if k_yes + p_no < 100:
             allocs, profit, volume = self._walk_book('yes', 'no')
-            if profit > 0 and volume >= 50:
+            if profit > 100 and volume >= 10: # <---------------- # Make it so I can toggle these values in configuratoin, minimum profit, and minimum value
                 self._execute_trade(allocs, "Kalshi YES / PM NO", "yes", "no")
 
-                self.cooldown_until = time.time() + 1.5
+                self.cooldown_until = time.time() + 0.1
                 return
 
         # Scenario B: Kalshi NO + PM YES
         k_no = self.kalshi_book.best_no_ask_idx
         p_yes = self.pm_book.best_yes_ask_idx
 
-        if k_no + p_yes < 99: # <======================================================================================================== TEST FOR NOW
+        if k_no + p_yes < 100:
             # Maybe add a statement to check if volume is not zero? maybe
             allocs, profit, volume = self._walk_book('no', 'yes')
-            if profit > 0 and volume >= 50:
+            if profit > 100 and volume >= 10: # <---------------- # Make it so I can toggle these values in configuratoin, minimum profit, and minimum value
                 self._execute_trade(allocs, "Kalshi NO / PM YES", "no", "yes")
 
-                self.cooldown_until = time.time() + 1.5
+                self.cooldown_until = time.time() + 0.1
 
     def _walk_book(self, kalshi_side, pm_side): 
         """
