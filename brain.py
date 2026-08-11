@@ -57,7 +57,7 @@ class JanusBrain:
             if profit > 100 and volume >= 10: # <---------------- # Make it so I can toggle these values in configuratoin, minimum profit, and minimum value
                 self._execute_trade(allocs, "Kalshi YES / PM NO", "yes", "no")
 
-                self.cooldown_until = time.time() + 0.1
+                self.cooldown_until = time.time() + 1
                 return
 
         # Scenario B: Kalshi NO + PM YES
@@ -70,7 +70,7 @@ class JanusBrain:
             if profit > 100 and volume >= 10: # <---------------- # Make it so I can toggle these values in configuratoin, minimum profit, and minimum value
                 self._execute_trade(allocs, "Kalshi NO / PM YES", "no", "yes")
 
-                self.cooldown_until = time.time() + 0.1
+                self.cooldown_until = time.time() + 1
 
     def _walk_book(self, kalshi_side, pm_side): 
         """
