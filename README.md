@@ -4,7 +4,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Asynchronous%20%7C%20O(1)-orange.svg)
 
-### 🚀 [CLICK HERE TO VIEW THE LIVE TRADING DASHBOARD](https://smithkhatri.github.io/Janus_Engine/dashboard/) 🚀
+### 🚀 [CLICK HERE TO VIEW THE TRADING DASHBOARD](https://smithkhatri.github.io/Janus_Engine/dashboard/) 🚀
 
 Janus Engine is a high-performance, asynchronous arbitrage engine designed to capitalize on fleeting price inefficiencies between prediction markets (Kalshi and Polymarket).
 
