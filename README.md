@@ -4,6 +4,8 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Asynchronous%20%7C%20O(1)-orange.svg)
 
+### 🚀 [CLICK HERE TO VIEW THE LIVE TRADING DASHBOARD](https://smithkhatri.github.io/Janus_Engine/dashboard/) 🚀
+
 Janus Engine is a high-performance, asynchronous arbitrage engine designed to capitalize on fleeting price inefficiencies between prediction markets (Kalshi and Polymarket).
 
 ## 🚀 Overview
@@ -28,7 +30,6 @@ The system streams live orderbook data via WebSockets from multiple exchanges, m
 
 The project includes a lightweight frontend dashboard to visualize trading performance over time, parsing log data to calculate metrics like Win Rate, Realized PnL, and Total Volume Traded.
 
-**👉 [View the Live Trading Dashboard](https://smithkhatri.github.io/Janus_Engine/dashboard/)**
 
 *(Note: To host this yourself, simply enable GitHub Pages on your repository and point it to the `main` branch. The dashboard is fully static!)*
 
@@ -50,10 +51,4 @@ Then, simply open `dashboard/index.html` in your browser.
    python main.py
    ```
 
-## 📈 Future Enhancements (Roadmap)
-- **C++ Core:** Migrating the hot-path `brain.py` logic to a C++ extension for ultra-low latency execution.
-- **Machine Learning Overlays:** Predicting orderbook imbalances to anticipate directional moves seconds before they occur.
-- **Advanced Hedging:** Implementing statistical arbitrage if perfect pairs are temporarily unavailable.
 
----
-*Built as a showcase for Quant / SWE / ML roles. Demonstrates low-latency systems design, concurrent programming, and algorithmic trading concepts.*
