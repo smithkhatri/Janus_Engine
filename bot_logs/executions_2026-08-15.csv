@@ -1,0 +1,3 @@
+timestamp,pair_id,strategy,k_price,p_price,intended_qty,theoretical_profit,k_fill_qty,k_fill_time_ms,k_status_code,p_fill_qty,p_fill_time_ms,p_status_code,outcome,unwind_action,unwind_pnl,net_realized_pnl
+2026-08-15T06:39:27.641838Z,GPT-24-AGI,Kalshi YES / PM NO,41,28,182,527800,182,89,200,182,165,200,success,none,0,527800
+2026-08-15T12:20:19.187603Z,NFL-24-MVP,Kalshi YES / PM NO,48,35,80,112000,80,147,200,80,190,200,success,none,0,112000

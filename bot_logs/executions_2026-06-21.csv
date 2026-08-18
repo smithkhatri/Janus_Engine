@@ -1,0 +1,5 @@
+timestamp,pair_id,strategy,k_price,p_price,intended_qty,theoretical_profit,k_fill_qty,k_fill_time_ms,k_status_code,p_fill_qty,p_fill_time_ms,p_status_code,outcome,unwind_action,unwind_pnl,net_realized_pnl
+2026-06-21T03:32:10.473389Z,ELEC-24-PREZ,Kalshi YES / PM NO,58,29,161,193200,161,69,200,161,102,200,success,none,0,193200
+2026-06-21T04:53:37.973158Z,BTC-24-100K,Kalshi NO / PM YES,38,23,56,212800,56,83,200,56,153,200,success,none,0,212800
+2026-06-21T12:39:39.238168Z,GPT-24-AGI,Kalshi YES / PM NO,56,42,197,19700,197,61,200,197,111,200,success,none,0,19700
+2026-06-21T19:32:36.134817Z,BTC-24-100K,Kalshi NO / PM YES,28,51,148,296000,148,55,200,148,141,200,success,none,0,296000

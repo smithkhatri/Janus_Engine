@@ -1,0 +1,3 @@
+timestamp,pair_id,strategy,k_price,p_price,intended_qty,theoretical_profit,k_fill_qty,k_fill_time_ms,k_status_code,p_fill_qty,p_fill_time_ms,p_status_code,outcome,unwind_action,unwind_pnl,net_realized_pnl
+2026-07-18T06:19:43.104989Z,BTC-24-100K,Kalshi NO / PM YES,20,71,45,36000,45,107,200,45,94,200,success,none,0,36000
+2026-07-18T07:34:03.146542Z,GPT-24-AGI,Kalshi NO / PM YES,46,47,61,36600,61,145,200,61,41,200,success,none,0,36600

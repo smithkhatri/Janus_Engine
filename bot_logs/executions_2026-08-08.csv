@@ -1,0 +1,4 @@
+timestamp,pair_id,strategy,k_price,p_price,intended_qty,theoretical_profit,k_fill_qty,k_fill_time_ms,k_status_code,p_fill_qty,p_fill_time_ms,p_status_code,outcome,unwind_action,unwind_pnl,net_realized_pnl
+2026-08-08T04:19:52.135642Z,FED-24-RATES,Kalshi YES / PM NO,56,26,142,241400,142,73,200,142,135,200,success,none,0,241400
+2026-08-08T13:53:37.016261Z,GPT-24-AGI,Kalshi YES / PM NO,43,52,80,32000,80,69,200,80,147,200,success,none,0,32000
+2026-08-08T20:15:50.184767Z,ELEC-24-PREZ,Kalshi NO / PM YES,33,24,41,172200,41,79,200,41,135,200,success,none,0,172200

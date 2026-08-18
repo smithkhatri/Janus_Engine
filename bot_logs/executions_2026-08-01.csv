@@ -1,0 +1,4 @@
+timestamp,pair_id,strategy,k_price,p_price,intended_qty,theoretical_profit,k_fill_qty,k_fill_time_ms,k_status_code,p_fill_qty,p_fill_time_ms,p_status_code,outcome,unwind_action,unwind_pnl,net_realized_pnl
+2026-08-01T00:41:39.458213Z,BTC-24-100K,Kalshi YES / PM NO,55,22,127,254000,127,78,200,127,73,200,success,none,0,254000
+2026-08-01T13:26:29.854664Z,ELEC-24-PREZ,Kalshi YES / PM NO,39,31,95,256500,95,32,200,95,135,200,success,none,0,256500
+2026-08-01T18:47:15.232117Z,BTC-24-100K,Kalshi NO / PM YES,26,30,191,821300,191,93,200,110,184,200,partial_unwind,market_sell_kalshi,-1460,471540

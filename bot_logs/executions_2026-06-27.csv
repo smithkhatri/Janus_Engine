@@ -1,0 +1,8 @@
+timestamp,pair_id,strategy,k_price,p_price,intended_qty,theoretical_profit,k_fill_qty,k_fill_time_ms,k_status_code,p_fill_qty,p_fill_time_ms,p_status_code,outcome,unwind_action,unwind_pnl,net_realized_pnl
+2026-06-27T03:31:19.096074Z,GPT-24-AGI,Kalshi YES / PM NO,43,54,153,15300,153,135,200,153,60,200,success,none,0,15300
+2026-06-27T05:56:22.776194Z,ELEC-24-PREZ,Kalshi YES / PM NO,47,36,60,96000,60,141,200,60,101,200,success,none,0,96000
+2026-06-27T11:19:45.976385Z,ELEC-24-PREZ,Kalshi YES / PM NO,36,23,149,566200,149,76,200,149,124,200,success,none,0,566200
+2026-06-27T13:26:33.040944Z,FED-24-RATES,Kalshi YES / PM NO,40,56,136,40800,136,56,200,136,144,200,success,none,0,40800
+2026-06-27T15:25:16.040211Z,FED-24-RATES,Kalshi YES / PM NO,45,53,169,67600,169,46,200,169,59,200,success,none,0,67600
+2026-06-27T22:39:46.128462Z,FED-24-RATES,Kalshi NO / PM YES,27,49,62,142600,62,44,200,62,75,200,success,none,0,142600
+2026-06-27T22:50:17.364341Z,ELEC-24-PREZ,Kalshi NO / PM YES,21,57,144,273600,144,107,200,108,49,200,partial_unwind,market_sell_kalshi,-1121,204079

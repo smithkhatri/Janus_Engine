@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Janus Engine | Arbitrage Dashboard</title>
+    <!-- Use Inter font for a clean, modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">▲</div>
+                <h2>Janus Engine</h2>
+            </div>
+            <ul class="nav-links">
+                <li class="active">Overview</li>
+                <li>Live Executions</li>
+                <li>Orderbook State</li>
+                <li>Settings</li>
+            </ul>
+            <div class="status">
+                <div class="status-indicator live"></div>
+                <span>Engine Live</span>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="dashboard">
+            <header>
+                <div>
+                    <h1>Portfolio Overview</h1>
+                    <p class="subtitle">Cross-exchange prediction market arbitrage</p>
+                </div>
+                <div class="date-filter">
+                    <span>Last 60 Days</span>
+                </div>
+            </header>
+
+            <!-- Key Metrics Grid -->
+            <section class="metrics-grid">
+                <div class="metric-card glass">
+                    <h3>Net Realized PnL</h3>
+                    <div class="value positive" id="total-pnl">$0.00</div>
+                    <div class="subtext">+12.4% vs last month</div>
+                </div>
+                <div class="metric-card glass">
+                    <h3>Win Rate</h3>
+                    <div class="value" id="win-rate">0%</div>
+                    <div class="subtext">Successful pairs</div>
+                </div>
+                <div class="metric-card glass">
+                    <h3>Total Trades</h3>
+                    <div class="value" id="total-trades">0</div>
+                    <div class="subtext">Completed executions</div>
+                </div>
+                <div class="metric-card glass">
+                    <h3>Total Volume</h3>
+                    <div class="value" id="total-volume">0</div>
+                    <div class="subtext">Contracts traded</div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="charts-section">
+                <div class="chart-container glass main-chart">
+                    <h3>Cumulative PnL Over Time</h3>
+                    <canvas id="pnlChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Recent Trades Table -->
+            <section class="table-section glass">
+                <div class="table-header">
+                    <h3>Recent Executions</h3>
+                </div>
+                <div class="table-container">
+                    <table id="trades-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Pair</th>
+                                <th>Strategy</th>
+                                <th>Volume</th>
+                                <th>Outcome</th>
+                                <th>PnL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trades-tbody">
+                            <!-- Rows injected by app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

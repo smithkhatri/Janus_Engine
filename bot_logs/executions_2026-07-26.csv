@@ -1,0 +1,10 @@
+timestamp,pair_id,strategy,k_price,p_price,intended_qty,theoretical_profit,k_fill_qty,k_fill_time_ms,k_status_code,p_fill_qty,p_fill_time_ms,p_status_code,outcome,unwind_action,unwind_pnl,net_realized_pnl
+2026-07-26T01:30:02.530302Z,GPT-24-AGI,Kalshi YES / PM NO,39,23,125,462500,125,105,200,125,91,200,success,none,0,462500
+2026-07-26T04:11:18.072461Z,FED-24-RATES,Kalshi NO / PM YES,46,47,115,46000,115,84,200,115,130,200,success,none,0,46000
+2026-07-26T05:09:00.237370Z,ELEC-24-PREZ,Kalshi NO / PM YES,29,39,43,133300,43,43,200,3,58,200,partial_unwind,market_sell_kalshi,-1576,7724
+2026-07-26T09:16:48.841589Z,NFL-24-MVP,Kalshi YES / PM NO,31,30,191,725800,191,104,200,191,69,200,success,none,0,725800
+2026-07-26T11:05:44.612519Z,GPT-24-AGI,Kalshi NO / PM YES,20,39,146,554800,146,144,200,118,190,200,partial_unwind,market_sell_kalshi,-1309,447091
+2026-07-26T15:57:22.826353Z,NFL-24-MVP,Kalshi NO / PM YES,27,25,74,347800,74,96,200,74,64,200,success,none,0,347800
+2026-07-26T18:18:37.536303Z,ELEC-24-PREZ,Kalshi NO / PM YES,48,37,96,124800,96,79,200,42,77,200,partial_unwind,market_sell_kalshi,-1931,52669
+2026-07-26T19:07:59.720879Z,NFL-24-MVP,Kalshi YES / PM NO,57,32,143,114400,143,53,200,143,41,200,success,none,0,114400
+2026-07-26T20:53:10.885026Z,NFL-24-MVP,Kalshi YES / PM NO,41,46,134,160800,134,67,200,87,132,200,partial_unwind,market_sell_kalshi,-1486,102914
