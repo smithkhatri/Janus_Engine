@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        const response = await fetch('/api/trades');
+        const response = await fetch('data.json');
         const trades = await response.json();
         
         if (!trades || trades.length === 0) {
@@ -74,8 +74,8 @@ function processAndRenderData(trades) {
     // Render Chart
     renderChart(cumulativePnLData);
 
-    // Render Table (last 50 trades)
-    renderTable(trades.slice(-50).reverse());
+    // Render Table (all trades)
+    renderTable(trades.reverse());
 }
 
 function renderChart(data) {

@@ -28,11 +28,16 @@ The system streams live orderbook data via WebSockets from multiple exchanges, m
 
 The project includes a lightweight frontend dashboard to visualize trading performance over time, parsing log data to calculate metrics like Win Rate, Realized PnL, and Total Volume Traded.
 
-### Running the Dashboard
+**👉 [View the Live Trading Dashboard](https://<YOUR_GITHUB_USERNAME>.github.io/Janus_Engine/dashboard/)**
+
+*(Note: To host this yourself, simply enable GitHub Pages on your repository and point it to the `main` branch. The dashboard is fully static!)*
+
+### Generating New Dashboard Data (Local)
+If you run the bot and generate new logs, you can compile them into the static JSON file used by the dashboard:
 ```bash
-python dashboard/server.py
+python build_static_data.py
 ```
-Access the UI at `http://localhost:8000`.
+Then, simply open `dashboard/index.html` in your browser.
 
 ## 🛠 Setup & Installation
 
