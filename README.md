@@ -26,7 +26,7 @@ The system streams live orderbook data via WebSockets from multiple exchanges, m
 3. **Execution Engine (`execution.py`):** Spawns a background thread to fire concurrent HTTP requests to both exchanges. Handles partial fills, failure states, and unwind logic to minimize delta exposure.
 4. **Trade Logger (`trade_logger.py`):** Uses thread-safe queues and an asynchronous cold-path flusher to log metrics with zero hot-path I/O blocking.
 
-## 📊 Performance & Dashboard
+##Performance & Dashboard
 
 The project includes a lightweight frontend dashboard to visualize trading performance over time, parsing log data to calculate metrics like Win Rate, Realized PnL, and Total Volume Traded.
 
