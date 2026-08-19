@@ -4,11 +4,11 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Asynchronous%20%7C%20O(1)-orange.svg)
 
-### 🚀 [CLICK HERE TO VIEW THE TRADING DASHBOARD](https://smithkhatri.github.io/Janus_Engine/dashboard/) 🚀
+###  [CLICK HERE TO VIEW THE TRADING DASHBOARD](https://smithkhatri.github.io/Janus_Engine/dashboard/) 
 
 Janus Engine is a high-performance, asynchronous arbitrage engine designed to capitalize on fleeting price inefficiencies between prediction markets (Kalshi and Polymarket).
 
-## 🚀 Overview
+##Overview
 
 The system streams live orderbook data via WebSockets from multiple exchanges, maintains an internal O(1) representation of the books, and mathematically solves for the optimal cross-exchange execution volumes under multi-wallet constraints.
 
@@ -19,7 +19,7 @@ The system streams live orderbook data via WebSockets from multiple exchanges, m
 - **Daemon Thread Execution:** Isolates blocking execution I/O in daemon threads to prevent freezing the WebSocket event loops, allowing the bot to continue listening to market ticks while trades are in flight.
 - **Optimistic Concurrency:** Updates shared balances optimistically upon discovering profitable trades to prevent over-allocating capital in concurrent market evaluations.
 
-## 🧠 System Architecture
+##System Architecture
 
 1. **Orderbook Router (`orderbook_router.py`):** Ingests raw websocket ticks and routes them to the correct local `Kalshi_Orderbook` or `PM_Orderbook` instances.
 2. **The Brain (`brain.py`):** Evaluates `k_yes + p_no < 100` instantaneously. If an opportunity exists, it walks the book level-by-level, calculating marginal cost including exact exchange fees.
@@ -40,7 +40,7 @@ python build_static_data.py
 ```
 Then, simply open `dashboard/index.html` in your browser.
 
-## 🛠 Setup & Installation
+##Setup & Installation
 
 1. Clone the repository.
 2. Install dependencies (e.g., `websockets`, `aiohttp`, `requests`).
