@@ -1,179 +1,241 @@
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        const response = await fetch('data.json');
-        const trades = await response.json();
-        
-        if (!trades || trades.length === 0) {
-            console.log("No trades found.");
-            return;
-        }
+// The engine logs money as integer hundredths of a cent, so 10000 == $1.00.
+const PNL_SCALE = 10000;
+const INITIAL_ROWS = 100;
 
-        processAndRenderData(trades);
-    } catch (err) {
-        console.error("Failed to load trade data:", err);
-    }
+// Order matters: this is the order outcomes appear in the breakdown table.
+const OUTCOMES = {
+    success:           { label: 'Both legs filled',  short: 'filled',   css: 'out-filled' },
+    partial_unwind:    { label: 'Partial, unwound',  short: 'partial',  css: 'out-partial' },
+    leg_failed_unwind: { label: 'One leg, unwound',  short: 'unwound',  css: 'out-unwound' },
+    failed_no_fill:    { label: 'No fill',           short: 'no fill',  css: 'out-miss' },
+};
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const usd = (n) => (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
 });
+const count = (n) => n.toLocaleString('en-US');
+const pct = (n, d) => (d ? (100 * n / d).toFixed(1) + '%' : '—');
 
-function processAndRenderData(trades) {
-    let totalPnL = 0;
-    let totalTrades = trades.length;
-    let successfulTrades = 0;
-    let totalVolume = 0;
+const dollars = (row) => Number(row.net_realized_pnl || 0) / PNL_SCALE;
+const num = (row, key) => Number(row[key] || 0);
+const day = (row) => row.timestamp.slice(0, 10);
 
-    // Sort by timestamp just in case
-    trades.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-    const dailyPnL = {};
-    const cumulativePnLData = [];
-    let currentCumulative = 0;
-
-    // Aggregate metrics
-    trades.forEach(trade => {
-        const pnl = parseFloat(trade.net_realized_pnl) / 100; // Assuming it was in hundredths of a cent, so divide by 100 to get dollars (if it's cents, wait: 1 contract = 100 cents = $1. Let's assume net_realized_pnl is in cents, so /100 to get USD. Actually, code says "hundredths of a cent", so 10000 = $1. Let's divide by 10000)
-        
-        // Let's divide by 100 to convert "hundredths of a cent" to "cents", then by 100 to get dollars. Total 10000.
-        const pnlDollars = pnl / 100; 
-
-        totalPnL += pnlDollars;
-        totalVolume += parseInt(trade.intended_qty) || 0;
-
-        if (trade.outcome === 'success') {
-            successfulTrades++;
-        } else if (trade.outcome === 'partial_unwind' && pnlDollars > 0) {
-            successfulTrades++; // Count partials that made money as wins
-        }
-
-        // Daily aggregation for chart
-        const date = trade.timestamp.split('T')[0];
-        if (!dailyPnL[date]) {
-            dailyPnL[date] = 0;
-        }
-        dailyPnL[date] += pnlDollars;
-    });
-
-    // Compute cumulative data for chart
-    for (const [date, dailyValue] of Object.entries(dailyPnL)) {
-        currentCumulative += dailyValue;
-        cumulativePnLData.push({ x: date, y: currentCumulative });
-    }
-
-    // Update UI Metrics
-    const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
-    
-    const pnlEl = document.getElementById('total-pnl');
-    pnlEl.textContent = formatCurrency(totalPnL);
-    if (totalPnL < 0) {
-        pnlEl.classList.remove('positive');
-        pnlEl.classList.add('negative');
-    }
-
-    document.getElementById('win-rate').textContent = `${((successfulTrades / totalTrades) * 100).toFixed(1)}%`;
-    document.getElementById('total-trades').textContent = new Intl.NumberFormat('en-US').format(totalTrades);
-    document.getElementById('total-volume').textContent = new Intl.NumberFormat('en-US').format(totalVolume);
-
-    // Render Chart
-    renderChart(cumulativePnLData);
-
-    // Render Table (all trades)
-    renderTable(trades.reverse());
+function dateLabel(isoDay) {
+    const [y, m, d] = isoDay.split('-');
+    return `${Number(d)} ${MONTHS[Number(m) - 1]} ${y}`;
 }
 
-function renderChart(data) {
-    const ctx = document.getElementById('pnlChart').getContext('2d');
-    
-    // Gradient fill
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
-    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+function timeLabel(iso) {
+    const [date, rest] = iso.split('T');
+    const [, m, d] = date.split('-');
+    return `${Number(d)} ${MONTHS[Number(m) - 1]}  ${rest.slice(0, 8)}`;
+}
+
+function median(values) {
+    if (!values.length) return null;
+    const s = [...values].sort((a, b) => a - b);
+    const mid = s.length >> 1;
+    return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+function cell(row, text, className) {
+    const td = row.insertCell();
+    td.textContent = text;
+    if (className) td.className = className;
+    return td;
+}
+
+async function load() {
+    const res = await fetch('data.json');
+    if (!res.ok) throw new Error(`data.json returned ${res.status}`);
+    const trades = await res.json();
+    if (!Array.isArray(trades) || !trades.length) {
+        document.getElementById('intro-line').textContent =
+            'No execution records in this snapshot. Run build_static_data.py to regenerate data.json.';
+        return;
+    }
+    trades.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    render(trades);
+}
+
+function render(trades) {
+    const realized = trades.reduce((sum, t) => sum + dollars(t), 0);
+    const modelled = trades.reduce((sum, t) => sum + num(t, 'theoretical_profit'), 0) / PNL_SCALE;
+    const contracts = trades.reduce((sum, t) => sum + num(t, 'intended_qty'), 0);
+    const markets = new Set(trades.map((t) => t.pair_id)).size;
+    const filled = trades.filter((t) => t.outcome === 'success' || t.outcome === 'partial_unwind').length;
+
+    const first = dateLabel(day(trades[0]));
+    const last = dateLabel(day(trades[trades.length - 1]));
+
+    document.getElementById('intro-line').textContent =
+        `${count(trades.length)} arbitrage attempts across ${count(markets)} Kalshi/Polymarket ` +
+        `market pairs, ${first} to ${last}. Every figure below is computed from the raw ` +
+        `execution log, including the attempts that missed a leg.`;
+
+    setFigure('f-pnl', usd(realized), realized >= 0 ? 'gain' : 'loss');
+    setFigure('f-trades', count(trades.length));
+    setFigure('f-filled', pct(filled, trades.length));
+    setFigure('f-volume', count(contracts));
+    setFigure('f-capture', pct(realized, modelled));
+
+    document.getElementById('f-filled-note').textContent = `${count(filled)} of ${count(trades.length)}`;
+    document.getElementById('f-capture-note').textContent = `${usd(modelled)} modelled`;
+
+    renderOutcomes(trades);
+    renderLatency(trades);
+    renderChart(cumulativeByDay(trades));
+    renderLedger([...trades].reverse());
+}
+
+function setFigure(id, text, className) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    if (className) el.classList.add(className);
+}
+
+function renderOutcomes(trades) {
+    const tbody = document.getElementById('outcome-rows');
+    for (const [key, meta] of Object.entries(OUTCOMES)) {
+        const n = trades.filter((t) => t.outcome === key).length;
+        const tr = tbody.insertRow();
+        cell(tr, meta.label, meta.css);
+        cell(tr, count(n));
+        cell(tr, pct(n, trades.length), 'share');
+    }
+}
+
+function renderLatency(trades) {
+    const rows = [
+        ['Kalshi', median(trades.map((t) => num(t, 'k_fill_time_ms')).filter((v) => v > 0))],
+        ['Polymarket', median(trades.map((t) => num(t, 'p_fill_time_ms')).filter((v) => v > 0))],
+    ];
+    const tbody = document.getElementById('latency-rows');
+    for (const [venue, ms] of rows) {
+        const tr = tbody.insertRow();
+        cell(tr, venue);
+        cell(tr, ms === null ? '—' : `${Math.round(ms)} ms`);
+    }
+}
+
+function cumulativeByDay(trades) {
+    const byDay = new Map();
+    for (const t of trades) {
+        byDay.set(day(t), (byDay.get(day(t)) || 0) + dollars(t));
+    }
+    let running = 0;
+    return [...byDay].map(([date, delta]) => {
+        running += delta;
+        return { date, total: running };
+    });
+}
+
+function renderChart(series) {
+    const ctx = document.getElementById('pnl-chart');
+    const gridColor = '#eae7e0';
 
     new Chart(ctx, {
         type: 'line',
         data: {
-            labels: data.map(d => d.x),
+            labels: series.map((p) => p.date),
             datasets: [{
-                label: 'Cumulative PnL ($)',
-                data: data.map(d => d.y),
-                borderColor: '#3b82f6',
-                backgroundColor: gradient,
-                borderWidth: 2,
+                data: series.map((p) => p.total),
+                borderColor: '#1f3f66',
+                borderWidth: 1.5,
                 pointRadius: 0,
-                pointHoverRadius: 6,
-                fill: true,
-                tension: 0.4
-            }]
+                pointHitRadius: 12,
+                tension: 0,
+                fill: false,
+            }],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    backgroundColor: 'rgba(15, 17, 21, 0.9)',
-                    titleColor: '#94a3b8',
-                    bodyColor: '#e2e8f0',
-                    borderColor: 'rgba(255,255,255,0.1)',
-                    borderWidth: 1
-                }
+                    displayColors: false,
+                    backgroundColor: '#1c1b19',
+                    padding: 8,
+                    cornerRadius: 2,
+                    titleFont: { size: 11, weight: '400' },
+                    bodyFont: { size: 12 },
+                    callbacks: {
+                        title: (items) => dateLabel(items[0].label),
+                        label: (item) => usd(item.parsed.y),
+                    },
+                },
             },
             scales: {
                 x: {
-                    grid: { display: false, drawBorder: false },
-                    ticks: { color: '#94a3b8', maxTicksLimit: 10 }
+                    grid: { display: false },
+                    border: { color: '#cbc7bd' },
+                    ticks: {
+                        color: '#7a766d',
+                        font: { size: 11 },
+                        maxRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 8,
+                        callback(value) {
+                            const iso = this.getLabelForValue(value);
+                            const [, m, d] = iso.split('-');
+                            return `${Number(d)} ${MONTHS[Number(m) - 1]}`;
+                        },
+                    },
                 },
                 y: {
-                    grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                    grid: { color: gridColor },
+                    border: { display: false },
                     ticks: {
-                        color: '#94a3b8',
-                        callback: (value) => '$' + value
-                    }
-                }
+                        color: '#7a766d',
+                        font: { size: 11 },
+                        maxTicksLimit: 6,
+                        callback: (v) => '$' + count(v),
+                    },
+                },
             },
-            interaction: {
-                mode: 'nearest',
-                axis: 'x',
-                intersect: false
-            }
-        }
+        },
     });
 }
 
-function renderTable(trades) {
-    const tbody = document.getElementById('trades-tbody');
-    tbody.innerHTML = '';
+function renderLedger(trades) {
+    const tbody = document.getElementById('ledger-rows');
+    const foot = document.getElementById('table-foot');
+    const label = document.getElementById('row-count');
+    let shown = 0;
 
-    trades.forEach(trade => {
-        const tr = document.createElement('tr');
-        
-        // Format timestamp
-        const timeObj = new Date(trade.timestamp);
-        const timeStr = timeObj.toLocaleString([], { month: 'short', day: '2-digit', hour: '2-digit', minute:'2-digit', second:'2-digit' });
-        
-        // Outcome Badge
-        let badgeClass = 'success';
-        let outcomeText = 'Success';
-        if (trade.outcome === 'failed_no_fill' || trade.outcome === 'leg_failed_unwind') {
-            badgeClass = 'failed';
-            outcomeText = 'Failed';
-        } else if (trade.outcome === 'partial_unwind') {
-            badgeClass = 'partial';
-            outcomeText = 'Partial';
+    const draw = (limit) => {
+        for (const t of trades.slice(shown, limit)) {
+            const pnl = dollars(t);
+            const meta = OUTCOMES[t.outcome] || { short: t.outcome, css: 'out-miss' };
+            const tr = tbody.insertRow();
+            cell(tr, timeLabel(t.timestamp), 't');
+            cell(tr, t.pair_id, 'mkt');
+            cell(tr, String(t.strategy).replace('Kalshi', 'K'), 'leg');
+            cell(tr, num(t, 'k_price').toFixed(0) + '¢', 'num');
+            cell(tr, num(t, 'p_price').toFixed(0) + '¢', 'num');
+            cell(tr, count(num(t, 'intended_qty')), 'num');
+            cell(tr, `${count(num(t, 'k_fill_qty'))} / ${count(num(t, 'p_fill_qty'))}`, 'num');
+            cell(tr, meta.short, meta.css);
+            cell(tr, pnl === 0 ? '—' : usd(pnl), 'num ' + (pnl < 0 ? 'loss' : pnl > 0 ? 'gain' : ''));
         }
+        shown = Math.min(limit, trades.length);
+        label.textContent = shown < trades.length
+            ? `${count(shown)} most recent of ${count(trades.length)}`
+            : `${count(trades.length)} rows, newest first`;
+        foot.hidden = shown >= trades.length;
+    };
 
-        // PnL
-        const pnl = (parseFloat(trade.net_realized_pnl) / 10000).toFixed(2);
-        const pnlClass = pnl >= 0 ? 'text-positive' : 'text-negative';
-        const pnlText = pnl >= 0 ? `+$${pnl}` : `-$${Math.abs(pnl)}`;
-
-        tr.innerHTML = `
-            <td>${timeStr}</td>
-            <td style="font-weight: 600;">${trade.pair_id}</td>
-            <td style="color: #94a3b8;">${trade.strategy}</td>
-            <td>${trade.intended_qty}</td>
-            <td><span class="badge ${badgeClass}">${outcomeText}</span></td>
-            <td class="${pnlClass}">${pnlText}</td>
-        `;
-        tbody.appendChild(tr);
-    });
+    draw(INITIAL_ROWS);
+    document.getElementById('show-all').addEventListener('click', () => draw(trades.length));
 }
+
+load().catch((err) => {
+    document.getElementById('intro-line').textContent =
+        'Could not load data.json. If you opened this file directly, serve the folder over HTTP instead: python dashboard/server.py';
+    console.error(err);
+});

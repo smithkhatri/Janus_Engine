@@ -1,101 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Janus Engine | Arbitrage Dashboard</title>
-    <!-- Use Inter font for a clean, modern look -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <!-- Chart.js for data visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Janus Engine — execution log</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Sidebar Navigation -->
-        <nav class="sidebar">
-            <div class="logo">
-                <h2>Janus Engine</h2>
-            </div>
-            <ul class="nav-links">
-                <li class="active">Overview</li>
-            </ul>
-            <div class="status offline">
-                <div class="status-indicator offline"></div>
-                <span>Engine Offline</span>
-            </div>
-        </nav>
 
-        <!-- Main Content Area -->
-        <main class="dashboard">
-            <header>
-                <div>
-                    <h1>Portfolio Overview</h1>
-                    <p class="subtitle">Cross-exchange prediction market arbitrage</p>
-                </div>
-                <div class="date-filter">
-                    <span>Last 60 Days</span>
-                </div>
-            </header>
+<header class="topbar">
+    <div class="wordmark">Janus Engine</div>
+    <div class="topbar-right">
+        <span class="state">Engine offline</span>
+        <span class="sep">/</span>
+        <span>static snapshot</span>
+    </div>
+</header>
 
-            <!-- Key Metrics Grid -->
-            <section class="metrics-grid">
-                <div class="metric-card glass">
-                    <h3>Net Realized PnL</h3>
-                    <div class="value positive" id="total-pnl">$0.00</div>
-                    <div class="subtext">+12.4% vs last month</div>
-                </div>
-                <div class="metric-card glass">
-                    <h3>Win Rate</h3>
-                    <div class="value" id="win-rate">0%</div>
-                    <div class="subtext">Successful pairs</div>
-                </div>
-                <div class="metric-card glass">
-                    <h3>Total Trades</h3>
-                    <div class="value" id="total-trades">0</div>
-                    <div class="subtext">Completed executions</div>
-                </div>
-                <div class="metric-card glass">
-                    <h3>Total Volume</h3>
-                    <div class="value" id="total-volume">0</div>
-                    <div class="subtext">Contracts traded</div>
-                </div>
-            </section>
-
-            <!-- Charts Section -->
-            <section class="charts-section">
-                <div class="chart-container glass main-chart">
-                    <h3>Cumulative PnL Over Time</h3>
-                    <canvas id="pnlChart"></canvas>
-                </div>
-            </section>
-
-            <!-- Recent Trades Table -->
-            <section class="table-section glass">
-                <div class="table-header">
-                    <h3>Recent Executions</h3>
-                </div>
-                <div class="table-container">
-                    <table id="trades-table">
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Pair</th>
-                                <th>Strategy</th>
-                                <th>Volume</th>
-                                <th>Outcome</th>
-                                <th>PnL</th>
-                            </tr>
-                        </thead>
-                        <tbody id="trades-tbody">
-                            <!-- Rows injected by app.js -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        </main>
+<main>
+    <div class="intro">
+        <h1>Execution log</h1>
+        <p id="intro-line">Loading records&hellip;</p>
     </div>
 
-    <script src="app.js"></script>
+    <section class="figures" id="figures">
+        <div class="figure">
+            <span class="fig-label">Net realized P&amp;L</span>
+            <span class="fig-value" id="f-pnl">&mdash;</span>
+        </div>
+        <div class="figure">
+            <span class="fig-label">Trades attempted</span>
+            <span class="fig-value" id="f-trades">&mdash;</span>
+        </div>
+        <div class="figure">
+            <span class="fig-label">Both legs filled</span>
+            <span class="fig-value" id="f-filled">&mdash;</span>
+            <span class="fig-note" id="f-filled-note"></span>
+        </div>
+        <div class="figure">
+            <span class="fig-label">Contracts sized</span>
+            <span class="fig-value" id="f-volume">&mdash;</span>
+        </div>
+        <div class="figure">
+            <span class="fig-label">Realized vs. modelled</span>
+            <span class="fig-value" id="f-capture">&mdash;</span>
+            <span class="fig-note" id="f-capture-note"></span>
+        </div>
+    </section>
+
+    <section class="split">
+        <div class="panel">
+            <div class="panel-head">
+                <h2>Cumulative realized P&amp;L</h2>
+                <span class="panel-note">daily close, USD</span>
+            </div>
+            <div class="chart-box"><canvas id="pnl-chart"></canvas></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-head">
+                <h2>Outcomes</h2>
+            </div>
+            <table class="breakdown">
+                <tbody id="outcome-rows"></tbody>
+            </table>
+            <div class="panel-head sub">
+                <h2>Median fill latency</h2>
+            </div>
+            <table class="breakdown">
+                <tbody id="latency-rows"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head">
+            <h2>Executions</h2>
+            <span class="panel-note" id="row-count"></span>
+        </div>
+        <div class="table-scroll">
+            <table class="ledger">
+                <thead>
+                    <tr>
+                        <th>Time (UTC)</th>
+                        <th>Market</th>
+                        <th>Leg</th>
+                        <th class="num">K</th>
+                        <th class="num">PM</th>
+                        <th class="num">Qty</th>
+                        <th class="num">Filled</th>
+                        <th>Outcome</th>
+                        <th class="num">P&amp;L</th>
+                    </tr>
+                </thead>
+                <tbody id="ledger-rows"></tbody>
+            </table>
+        </div>
+        <div class="table-foot" id="table-foot" hidden>
+            <button type="button" id="show-all">Show all rows</button>
+        </div>
+    </section>
+
+    <footer>
+        Built from <code>bot_logs/executions_*.csv</code> by <code>build_static_data.py</code>.
+        The engine is not running; this page reads a committed snapshot.
+        Prices are in cents, P&amp;L in USD net of exchange fees.
+        <a href="https://github.com/smithkhatri/Janus_Engine">Source</a>
+    </footer>
+</main>
+
+<script src="app.js"></script>
 </body>
 </html>

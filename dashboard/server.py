@@ -53,7 +53,7 @@ def run(server_class=HTTPServer, handler_class=DashboardHandler, port=8000):
     os.chdir(os.path.dirname(__file__)) # Serve from the dashboard directory
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
-    print(f"🚀 Janus Dashboard running at http://localhost:{port}")
+    print(f"Dashboard served at http://localhost:{port} (ctrl-c to stop)")
     httpd.serve_forever()
 
 if __name__ == '__main__':
