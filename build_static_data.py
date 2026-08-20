@@ -32,7 +32,7 @@ def build_data():
     with open(out_path, "w") as f:
         json.dump(all_records, f)
         
-    print(f"✅ Successfully bundled {len(all_records)} trades into {out_path} for GitHub Pages.")
+    print(f"Wrote {len(all_records)} execution records to {out_path}")
 
 if __name__ == "__main__":
     build_data()

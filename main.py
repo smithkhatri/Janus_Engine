@@ -24,7 +24,7 @@ async def main():
     kalshi_tickers = router.get_all_kalshi_tickers()
     pm_slugs = router.get_all_pm_slugs()
 
-    print(f"🚀 Igniting Janus Engine Mark-2 — {len(kalshi_tickers)} markets loaded.")
+    print(f"Janus Engine starting: {len(kalshi_tickers)} markets loaded.")
     print(f"   Kalshi tickers: {kalshi_tickers}")
     print(f"   PM slugs: {pm_slugs}")
 
